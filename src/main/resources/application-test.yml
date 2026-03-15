@@ -1,0 +1,7 @@
+spring:
+  jpa:
+    show-sql: false
+
+app:
+  storage:
+    root: ./target/test-storage

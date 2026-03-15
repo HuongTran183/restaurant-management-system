@@ -1,0 +1,8 @@
+feat(pos): Bootstrap backend foundation and POS core
+
+Initialize the restaurant management backend with auth, catalog,
+floor, table QR, table sessions, ordering, billing, and pricing
+services. Harden token, storage, and QR flows uncovered during
+code review before wiring the first POS endpoints.
+
+Co-Authored-By: Codex <noreply@anthropic.com>
