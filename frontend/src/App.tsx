@@ -21,6 +21,7 @@ import {
   type ServiceRequestStatus,
 } from './lib/api';
 import { CashierWorkbench } from './components/CashierWorkbench';
+import { FloorOverview } from './components/FloorOverview';
 import { clearSession, msUntilSessionRefresh, readSession, saveSession, shouldRefreshSession } from './lib/session';
 
 const initialSession = typeof window === 'undefined' ? null : readSession();
@@ -679,7 +680,7 @@ function StaffDashboardPage({
 
   const reservationsQuery = useQuery({
     queryKey: ['staff', 'reservations', session?.accessToken],
-    queryFn: () => runStaffRequest((token) => staffApi.reservations(token, { size: 20 })),
+    queryFn: () => runStaffRequest((token) => staffApi.reservations(token, { size: 50 })),
     enabled: Boolean(session?.accessToken) && canManageFloor,
     retry: false,
   });
@@ -698,9 +699,16 @@ function StaffDashboardPage({
     retry: false,
   });
 
+  const floorTablesQuery = useQuery({
+    queryKey: ['staff', 'floor-tables', session?.accessToken],
+    queryFn: () => runStaffRequest((token) => staffApi.tables(token, { size: 100, active: true })),
+    enabled: Boolean(session?.accessToken) && canManageFloor,
+    retry: false,
+  });
+
   const tableSessionsQuery = useQuery({
     queryKey: ['staff', 'table-sessions', session?.accessToken],
-    queryFn: () => runStaffRequest((token) => staffApi.tableSessions(token, { size: 20, status: 'OPEN' })),
+    queryFn: () => runStaffRequest((token) => staffApi.tableSessions(token, { size: 50, status: 'OPEN' })),
     enabled: Boolean(session?.accessToken) && canManageFloor,
     retry: false,
   });
@@ -892,6 +900,24 @@ function StaffDashboardPage({
         <section className="panel px-6 py-8 sm:px-8">
           <EmptyMessage message="No workspace sections are available for the current role." />
         </section>
+      ) : null}
+
+      {canManageFloor ? (
+        <DataPanel title="Floor overview" subtitle="Scan the room by table, session, and active reservation before making seating moves.">
+          {floorTablesQuery.isLoading ? <LoadingState label="Loading floor tables" /> : null}
+          {floorTablesQuery.error ? <ErrorState error={floorTablesQuery.error} /> : null}
+          {tableSessionsQuery.isLoading ? <LoadingState label="Loading table sessions" /> : null}
+          {tableSessionsQuery.error ? <ErrorState error={tableSessionsQuery.error} /> : null}
+          {reservationsQuery.isLoading ? <LoadingState label="Loading reservations" /> : null}
+          {reservationsQuery.error ? <ErrorState error={reservationsQuery.error} /> : null}
+          {floorTablesQuery.data && tableSessionsQuery.data && reservationsQuery.data ? (
+            <FloorOverview
+              reservations={reservationsQuery.data.content}
+              sessions={tableSessionsQuery.data.content}
+              tables={floorTablesQuery.data.content}
+            />
+          ) : null}
+        </DataPanel>
       ) : null}
 
       <section className="grid gap-6 xl:grid-cols-2">
