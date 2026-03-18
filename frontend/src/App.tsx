@@ -6,10 +6,10 @@ import { Link, Navigate, NavLink, Route, Routes, useNavigate, useParams } from '
 import {
   ApiError,
   authApi,
+  type PaymentMethod,
   publicApi,
   staffApi,
   type AuthSession,
-  type DashboardData,
   type DiningTable,
   type MenuItem,
   type PublicMenu,
@@ -20,6 +20,7 @@ import {
   type ServiceRequest,
   type ServiceRequestStatus,
 } from './lib/api';
+import { CashierWorkbench } from './components/CashierWorkbench';
 import { clearSession, msUntilSessionRefresh, readSession, saveSession, shouldRefreshSession } from './lib/session';
 
 const initialSession = typeof window === 'undefined' ? null : readSession();
@@ -629,6 +630,10 @@ type ReservationActionInput =
   | { reservationId: number; kind: 'check-in'; diningTableId: number; internalNote?: string }
   | { reservationId: number; kind: 'complete' };
 
+type OrderActionInput = { orderId: number; kind: 'confirm' | 'cancel' };
+
+type PaymentInput = { invoiceId: number; amount: number; method: PaymentMethod; note?: string };
+
 function StaffDashboardPage({
   session,
   onLogout,
@@ -695,6 +700,27 @@ function StaffDashboardPage({
     retry: false,
   });
 
+  const ordersQuery = useQuery({
+    queryKey: ['staff', 'orders', session?.accessToken],
+    queryFn: () => runStaffRequest((token) => staffApi.orders(token, { size: 10 })),
+    enabled: Boolean(session?.accessToken),
+    retry: false,
+  });
+
+  const invoicesQuery = useQuery({
+    queryKey: ['staff', 'invoices', session?.accessToken],
+    queryFn: () => runStaffRequest((token) => staffApi.invoices(token, { size: 10 })),
+    enabled: Boolean(session?.accessToken),
+    retry: false,
+  });
+
+  const paymentsQuery = useQuery({
+    queryKey: ['staff', 'payments', session?.accessToken],
+    queryFn: () => runStaffRequest((token) => staffApi.payments(token, { size: 10 })),
+    enabled: Boolean(session?.accessToken),
+    retry: false,
+  });
+
   const reservationActionMutation = useMutation({
     mutationFn: (action: ReservationActionInput) =>
       runStaffRequest((token) => {
@@ -717,6 +743,35 @@ function StaffDashboardPage({
 
   const serviceRequestMutation = useMutation({
     mutationFn: (requestId: number) => runStaffRequest((token) => staffApi.resolveServiceRequest(token, requestId)),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['staff'] });
+    },
+  });
+
+  const orderActionMutation = useMutation({
+    mutationFn: (action: OrderActionInput) =>
+      runStaffRequest((token) => {
+        switch (action.kind) {
+          case 'confirm':
+            return staffApi.confirmOrder(token, action.orderId);
+          case 'cancel':
+            return staffApi.cancelOrder(token, action.orderId);
+        }
+      }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['staff'] });
+    },
+  });
+
+  const createInvoiceMutation = useMutation({
+    mutationFn: (orderId: number) => runStaffRequest((token) => staffApi.createInvoice(token, orderId)),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['staff'] });
+    },
+  });
+
+  const recordPaymentMutation = useMutation({
+    mutationFn: (payload: PaymentInput) => runStaffRequest((token) => staffApi.recordPayment(token, payload)),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['staff'] });
     },
@@ -791,16 +846,29 @@ function StaffDashboardPage({
           ) : null}
         </DataPanel>
 
-        {dashboardQuery.data ? (
-          <>
-            <DataPanel title="Latest orders" subtitle="Includes the source channel field for QR visibility and audit trails.">
-              <OrderList orders={dashboardQuery.data.orders.content} />
-            </DataPanel>
-            <DataPanel title="Cashier activity" subtitle="Invoices and payments remain visible for the front-of-house handoff.">
-              <BillingList dashboard={dashboardQuery.data} />
-            </DataPanel>
-          </>
-        ) : null}
+        <DataPanel title="Cashier workbench" subtitle="Confirm orders, issue invoices, and record payments from one surface.">
+          {ordersQuery.isLoading ? <LoadingState label="Loading orders" /> : null}
+          {ordersQuery.error ? <ErrorState error={ordersQuery.error} /> : null}
+          {invoicesQuery.isLoading ? <LoadingState label="Loading invoices" /> : null}
+          {invoicesQuery.error ? <ErrorState error={invoicesQuery.error} /> : null}
+          {paymentsQuery.isLoading ? <LoadingState label="Loading payments" /> : null}
+          {paymentsQuery.error ? <ErrorState error={paymentsQuery.error} /> : null}
+          {ordersQuery.data && invoicesQuery.data && paymentsQuery.data ? (
+            <CashierWorkbench
+              orders={ordersQuery.data.content}
+              invoices={invoicesQuery.data.content}
+              payments={paymentsQuery.data.content}
+              isBusy={orderActionMutation.isPending || createInvoiceMutation.isPending || recordPaymentMutation.isPending}
+              orderError={orderActionMutation.error}
+              invoiceError={createInvoiceMutation.error}
+              paymentError={recordPaymentMutation.error}
+              onCancelOrder={(orderId) => orderActionMutation.mutate({ kind: 'cancel', orderId })}
+              onConfirmOrder={(orderId) => orderActionMutation.mutate({ kind: 'confirm', orderId })}
+              onCreateInvoice={(orderId) => createInvoiceMutation.mutate(orderId)}
+              onRecordPayment={(payload) => recordPaymentMutation.mutate(payload)}
+            />
+          ) : null}
+        </DataPanel>
 
         <DataPanel title="Open table sessions" subtitle="See which tables already have a live session before seating or check-in.">
           {tableSessionsQuery.isLoading ? <LoadingState label="Loading table sessions" /> : null}
@@ -830,29 +898,6 @@ function ProtectedRoute({
   }
 
   return <>{children}</>;
-}
-
-function OrderList({ orders }: { orders: DashboardData['orders']['content'] }) {
-  if (!orders.length) {
-    return <EmptyMessage message="No orders yet." />;
-  }
-
-  return (
-    <div className="space-y-3">
-      {orders.map((order) => (
-        <div key={order.id} className="data-row">
-          <div>
-            <p className="font-semibold text-ink">{order.orderCode}</p>
-            <p className="text-sm text-slate">{order.sourceChannel} • {order.status}</p>
-          </div>
-          <div className="text-right">
-            <p className="font-semibold text-forest">{formatMoney(order.totalAmount)}</p>
-            <p className="text-sm text-slate">{order.items.length} item(s)</p>
-          </div>
-        </div>
-      ))}
-    </div>
-  );
 }
 
 function ReservationList({
@@ -1067,46 +1112,6 @@ function TableSessionList({ sessions }: { sessions: TableSession[] }) {
   );
 }
 
-function BillingList({ dashboard }: { dashboard: DashboardData }) {
-  if (!dashboard.invoices.content.length && !dashboard.payments.content.length) {
-    return <EmptyMessage message="No billing activity yet." />;
-  }
-
-  return (
-    <div className="grid gap-4 lg:grid-cols-2">
-      <div className="space-y-3">
-        <p className="text-xs font-bold uppercase tracking-[0.24em] text-slate">Invoices</p>
-        {dashboard.invoices.content.map((invoice) => (
-          <div key={invoice.id} className="data-row">
-            <div>
-              <p className="font-semibold text-ink">{invoice.invoiceNumber}</p>
-              <p className="text-sm text-slate">Order #{invoice.orderId}</p>
-            </div>
-            <div className="text-right">
-              <p className="font-semibold text-forest">{formatMoney(invoice.totalAmount)}</p>
-              <p className="text-sm text-slate">{invoice.status}</p>
-            </div>
-          </div>
-        ))}
-      </div>
-      <div className="space-y-3">
-        <p className="text-xs font-bold uppercase tracking-[0.24em] text-slate">Payments</p>
-        {dashboard.payments.content.map((payment) => (
-          <div key={payment.id} className="data-row">
-            <div>
-              <p className="font-semibold text-ink">{payment.paymentCode}</p>
-              <p className="text-sm text-slate">Invoice #{payment.invoiceId}</p>
-            </div>
-            <div className="text-right">
-              <p className="font-semibold text-forest">{formatMoney(payment.amount)}</p>
-              <p className="text-sm text-slate">{payment.method}</p>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
 function TopNavLink({ children, to }: { children: ReactNode; to: string }) {
   return (
     <NavLink

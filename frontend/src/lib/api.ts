@@ -101,6 +101,9 @@ export type Order = {
   items: OrderItem[];
 };
 
+export type OrderStatus = 'DRAFT' | 'CONFIRMED' | 'COMPLETED' | 'CANCELLED';
+export type OrderSourceChannel = 'STAFF' | 'QR';
+
 export type Reservation = {
   id: number;
   reservationCode: string;
@@ -137,19 +140,21 @@ export type Invoice = {
   id: number;
   invoiceNumber: string;
   orderId: number;
-  status: string;
+  status: InvoiceStatus;
   totalAmount: number;
   paidAmount: number;
   issuedAt: string;
   closedAt: string | null;
 };
 
+export type InvoiceStatus = 'OPEN' | 'PAID' | 'VOID';
+
 export type Payment = {
   id: number;
   paymentCode: string;
   invoiceId: number;
-  method: string;
-  status: string;
+  method: PaymentMethod;
+  status: PaymentStatus;
   amount: number;
   paidAt: string | null;
   note: string | null;
@@ -166,6 +171,8 @@ export type DashboardData = {
 export type ReservationStatus = 'PENDING' | 'CONFIRMED' | 'CHECKED_IN' | 'COMPLETED' | 'CANCELLED';
 export type ServiceRequestStatus = 'OPEN' | 'RESOLVED' | 'CANCELLED';
 export type ServiceRequestType = 'CALL_WAITER' | 'REQUEST_BILL' | 'WATER' | 'OTHER';
+export type PaymentStatus = 'COMPLETED' | 'FAILED' | 'PENDING' | 'CANCELLED';
+export type PaymentMethod = 'CASH' | 'CARD' | 'BANK_TRANSFER' | 'E_WALLET';
 
 export type DiningTable = {
   id: number;
@@ -306,6 +313,88 @@ export const staffApi = {
 
     return { orders, reservations, serviceRequests, invoices, payments };
   },
+  orders: (
+    token: string,
+    params: { page?: number; size?: number; status?: OrderStatus; sourceChannel?: OrderSourceChannel; tableSessionId?: number; query?: string } = {},
+  ) =>
+    request<PageResponse<Order>>(
+      `/api/orders${buildQueryString({
+        page: params.page ?? 0,
+        size: params.size ?? 20,
+        status: params.status,
+        sourceChannel: params.sourceChannel,
+        tableSessionId: params.tableSessionId,
+        query: params.query,
+      })}`,
+      {},
+      token,
+    ),
+  invoices: (
+    token: string,
+    params: { page?: number; size?: number; status?: InvoiceStatus; query?: string } = {},
+  ) =>
+    request<PageResponse<Invoice>>(
+      `/api/invoices${buildQueryString({
+        page: params.page ?? 0,
+        size: params.size ?? 20,
+        status: params.status,
+        query: params.query,
+      })}`,
+      {},
+      token,
+    ),
+  payments: (
+    token: string,
+    params: { page?: number; size?: number; invoiceId?: number; method?: PaymentMethod; query?: string } = {},
+  ) =>
+    request<PageResponse<Payment>>(
+      `/api/payments${buildQueryString({
+        page: params.page ?? 0,
+        size: params.size ?? 20,
+        invoiceId: params.invoiceId,
+        method: params.method,
+        query: params.query,
+      })}`,
+      {},
+      token,
+    ),
+  confirmOrder: (token: string, orderId: number) =>
+    request<Order>(
+      `/api/orders/${orderId}/confirm`,
+      {
+        method: 'POST',
+      },
+      token,
+    ),
+  cancelOrder: (token: string, orderId: number) =>
+    request<Order>(
+      `/api/orders/${orderId}/cancel`,
+      {
+        method: 'POST',
+      },
+      token,
+    ),
+  createInvoice: (token: string, orderId: number) =>
+    request<Invoice>(
+      '/api/invoices',
+      {
+        method: 'POST',
+        body: JSON.stringify({ orderId }),
+      },
+      token,
+    ),
+  recordPayment: (
+    token: string,
+    payload: { invoiceId: number; amount: number; method: PaymentMethod; note?: string },
+  ) =>
+    request<Payment>(
+      '/api/payments',
+      {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      },
+      token,
+    ),
   reservations: (
     token: string,
     params: { page?: number; size?: number; status?: ReservationStatus; query?: string } = {},
