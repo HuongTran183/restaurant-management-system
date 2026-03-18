@@ -644,6 +644,7 @@ type FloorActionInput =
   | { kind: 'seat-walk-in'; table: DiningTable };
 
 type ReservationQueueScope = 'ACTIVE' | 'HISTORY' | 'ALL';
+type WorkspaceLane = 'ALL' | 'FLOOR' | 'BILLING';
 
 const ACTIVE_RESERVATION_STATUSES: ReservationStatus[] = ['PENDING', 'CONFIRMED', 'CHECKED_IN'];
 const HISTORY_RESERVATION_STATUSES: ReservationStatus[] = ['COMPLETED', 'CANCELLED'];
@@ -662,6 +663,9 @@ function StaffDashboardPage({
   const userRoles = session?.user.roles ?? [];
   const canManageFloor = userRoles.some((role) => role === 'ADMIN' || role === 'MANAGER' || role === 'WAITER');
   const canManageBilling = userRoles.some((role) => role === 'ADMIN' || role === 'MANAGER' || role === 'CASHIER');
+  const [workspaceLane, setWorkspaceLane] = useState<WorkspaceLane>(
+    canManageFloor && canManageBilling ? 'ALL' : canManageFloor ? 'FLOOR' : 'BILLING',
+  );
   const [reservationQueueScope, setReservationQueueScope] = useState<ReservationQueueScope>('ACTIVE');
   const [reservationSearch, setReservationSearch] = useState('');
   const [orderSearch, setOrderSearch] = useState('');
@@ -669,6 +673,39 @@ function StaffDashboardPage({
   const [floorActionState, setFloorActionState] = useState<FloorOverviewActionState>(null);
   const reservationPanelRef = useRef<HTMLDivElement | null>(null);
   const workbenchPanelRef = useRef<HTMLDivElement | null>(null);
+  const showLaneSwitcher = canManageFloor && canManageBilling;
+  const showFloorLane = canManageFloor && workspaceLane !== 'BILLING';
+  const showBillingLane = canManageBilling && workspaceLane !== 'FLOOR';
+  const activeLaneTitle = describeWorkspaceLane(workspaceLane, canManageFloor, canManageBilling);
+  const activeLaneBody = describeWorkspaceLaneBody(workspaceLane, canManageFloor, canManageBilling);
+  const workbenchTitle = showFloorLane && showBillingLane
+    ? 'Operations workbench'
+    : showFloorLane
+      ? 'Floor workbench'
+      : 'Billing workbench';
+  const workbenchSubtitle = showFloorLane && showBillingLane
+    ? 'Handle order confirmations and billing actions from one surface.'
+    : showFloorLane
+      ? 'Keep dine-in tickets, sessions, and floor follow-up moving from one place.'
+      : 'Collect payment, reconcile invoices, and close the cashier loop from one place.';
+
+  useEffect(() => {
+    setWorkspaceLane((current) => {
+      if (canManageFloor && canManageBilling) {
+        return current === 'FLOOR' || current === 'BILLING' || current === 'ALL' ? current : 'ALL';
+      }
+
+      if (canManageFloor) {
+        return 'FLOOR';
+      }
+
+      if (canManageBilling) {
+        return 'BILLING';
+      }
+
+      return 'ALL';
+    });
+  }, [canManageBilling, canManageFloor]);
 
   const scrollToPanel = (ref: { current: HTMLDivElement | null }) => {
     window.requestAnimationFrame(() => {
@@ -755,9 +792,9 @@ function StaffDashboardPage({
   };
 
   const dashboardQuery = useQuery({
-    queryKey: ['staff', 'dashboard', session?.accessToken, canManageFloor, canManageBilling],
-    queryFn: () => runStaffRequest((token) => staffApi.dashboard(token, { canManageFloor, canManageBilling })),
-    enabled: Boolean(session?.accessToken) && (canManageFloor || canManageBilling),
+    queryKey: ['staff', 'dashboard', session?.accessToken, showFloorLane, showBillingLane],
+    queryFn: () => runStaffRequest((token) => staffApi.dashboard(token, { canManageFloor: showFloorLane, canManageBilling: showBillingLane })),
+    enabled: Boolean(session?.accessToken) && (showFloorLane || showBillingLane),
     retry: false,
   });
 
@@ -772,49 +809,49 @@ function StaffDashboardPage({
             : ALL_RESERVATION_STATUSES;
       return loadReservationsByStatuses(statuses, reservationSearch, reservationQueueScope);
     },
-    enabled: Boolean(session?.accessToken) && canManageFloor,
+    enabled: Boolean(session?.accessToken) && showFloorLane,
     retry: false,
   });
 
   const floorReservationsQuery = useQuery({
     queryKey: ['staff', 'floor-reservations', session?.accessToken],
     queryFn: () => loadReservationsByStatuses(ACTIVE_RESERVATION_STATUSES),
-    enabled: Boolean(session?.accessToken) && canManageFloor,
+    enabled: Boolean(session?.accessToken) && showFloorLane,
     retry: false,
   });
 
   const serviceRequestsQuery = useQuery({
     queryKey: ['staff', 'service-requests', session?.accessToken],
     queryFn: () => runStaffRequest((token) => staffApi.serviceRequests(token, { size: 20, status: 'OPEN' })),
-    enabled: Boolean(session?.accessToken) && canManageFloor,
+    enabled: Boolean(session?.accessToken) && showFloorLane,
     retry: false,
   });
 
   const staffMenuQuery = useQuery({
     queryKey: ['staff', 'menu-items'],
     queryFn: publicApi.menu,
-    enabled: canManageFloor,
+    enabled: showFloorLane,
     retry: false,
   });
 
   const tablesQuery = useQuery({
     queryKey: ['staff', 'tables', session?.accessToken],
     queryFn: () => loadAllPages((token, page, size) => staffApi.tables(token, { page, size, active: true, status: 'AVAILABLE' })),
-    enabled: Boolean(session?.accessToken) && canManageFloor,
+    enabled: Boolean(session?.accessToken) && showFloorLane,
     retry: false,
   });
 
   const floorTablesQuery = useQuery({
     queryKey: ['staff', 'floor-tables', session?.accessToken],
     queryFn: () => loadAllPages((token, page, size) => staffApi.tables(token, { page, size, active: true })),
-    enabled: Boolean(session?.accessToken) && canManageFloor,
+    enabled: Boolean(session?.accessToken) && showFloorLane,
     retry: false,
   });
 
   const tableSessionsQuery = useQuery({
     queryKey: ['staff', 'table-sessions', session?.accessToken],
     queryFn: () => loadAllPages((token, page, size) => staffApi.tableSessions(token, { page, size, status: 'OPEN' })),
-    enabled: Boolean(session?.accessToken) && canManageFloor,
+    enabled: Boolean(session?.accessToken) && showFloorLane,
     retry: false,
   });
 
@@ -828,28 +865,28 @@ function StaffDashboardPage({
           query: orderSearch.trim() || undefined,
         }),
       ),
-    enabled: Boolean(session?.accessToken) && canManageFloor,
+    enabled: Boolean(session?.accessToken) && showFloorLane,
     retry: false,
   });
 
   const invoicesQuery = useQuery({
     queryKey: ['staff', 'invoices', session?.accessToken],
     queryFn: () => runStaffRequest((token) => staffApi.invoices(token, { size: 10 })),
-    enabled: Boolean(session?.accessToken) && canManageBilling,
+    enabled: Boolean(session?.accessToken) && showBillingLane,
     retry: false,
   });
 
   const paymentsQuery = useQuery({
     queryKey: ['staff', 'payments', session?.accessToken],
     queryFn: () => runStaffRequest((token) => staffApi.payments(token, { size: 10 })),
-    enabled: Boolean(session?.accessToken) && canManageBilling,
+    enabled: Boolean(session?.accessToken) && showBillingLane,
     retry: false,
   });
 
   const [invoicePresenceByOrderId, setInvoicePresenceByOrderId] = useState<Record<number, boolean>>({});
 
   useEffect(() => {
-    if (!canManageBilling) {
+    if (!showBillingLane) {
       setInvoicePresenceByOrderId({});
       return;
     }
@@ -905,7 +942,7 @@ function StaffDashboardPage({
     return () => {
       active = false;
     };
-  }, [canManageBilling, invoicesQuery.data, ordersQuery.data]);
+  }, [showBillingLane, invoicesQuery.data, ordersQuery.data]);
 
   const reservationActionMutation = useMutation({
     mutationFn: (action: ReservationActionInput) =>
@@ -1085,16 +1122,45 @@ function StaffDashboardPage({
             <p className="text-xs font-bold uppercase tracking-[0.24em] text-slate">Staff workspace</p>
             <h1 className="mt-3 font-display text-4xl text-ink">Welcome back, {session?.user.fullName}.</h1>
             <p className="mt-4 max-w-2xl text-base leading-8 text-slate">
-              Keep reservations moving, clear service requests, and monitor back-office activity without leaving the floor console.
+              {activeLaneBody}
             </p>
+            <div className="mt-4 flex flex-wrap gap-2">
+              {userRoles.map((role) => (
+                <RoleChip key={role} role={role} />
+              ))}
+            </div>
           </div>
-          <div className="flex flex-wrap gap-3">
-            <button className="button-secondary" onClick={refreshWorkspace} type="button">
-              Refresh workspace
-            </button>
-            <button className="button-secondary" onClick={onLogout} type="button">
-              Log out
-            </button>
+          <div className="space-y-3">
+            <div className="rounded-[24px] border border-ink/10 bg-white/70 px-4 py-4">
+              <p className="text-xs font-bold uppercase tracking-[0.24em] text-slate">Active lane</p>
+              <p className="mt-2 font-semibold text-ink">{activeLaneTitle}</p>
+              {showLaneSwitcher ? (
+                <div className="mt-3 inline-flex flex-wrap rounded-full border border-ink/10 bg-cream/70 p-1">
+                  {(['ALL', 'FLOOR', 'BILLING'] as WorkspaceLane[]).map((lane) => (
+                    <button
+                      key={lane}
+                      className={clsx(
+                        'rounded-full px-4 py-2 text-xs font-bold uppercase tracking-[0.18em] transition',
+                        workspaceLane === lane ? 'bg-forest text-cream' : 'text-slate hover:text-ink',
+                      )}
+                      onClick={() => setWorkspaceLane(lane)}
+                      type="button"
+                    >
+                      {lane === 'ALL' ? 'All lanes' : lane === 'FLOOR' ? 'Floor lane' : 'Billing lane'}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+
+            <div className="flex flex-wrap gap-3">
+              <button className="button-secondary" onClick={refreshWorkspace} type="button">
+                Refresh workspace
+              </button>
+              <button className="button-secondary" onClick={onLogout} type="button">
+                Log out
+              </button>
+            </div>
           </div>
         </div>
       </section>
@@ -1103,22 +1169,22 @@ function StaffDashboardPage({
       {dashboardQuery.error ? <ErrorState error={dashboardQuery.error} /> : null}
 
       {dashboardQuery.data ? (
-        <section className={clsx('grid gap-4 md:grid-cols-2', canManageFloor && canManageBilling ? 'xl:grid-cols-5' : canManageFloor ? 'xl:grid-cols-3' : 'xl:grid-cols-2')}>
-          {canManageFloor ? <MetricCard label="Orders" value={String(dashboardQuery.data.orders.totalElements)} tone="forest" /> : null}
-          {canManageFloor ? <MetricCard label="Reservations" value={String(dashboardQuery.data.reservations.totalElements)} tone="ember" /> : null}
-          {canManageFloor ? <MetricCard label="Service requests" value={String(dashboardQuery.data.serviceRequests.totalElements)} tone="slate" /> : null}
-          {canManageBilling ? <MetricCard label="Invoices" value={String(dashboardQuery.data.invoices.totalElements)} tone="forest" /> : null}
-          {canManageBilling ? <MetricCard label="Payments" value={String(dashboardQuery.data.payments.totalElements)} tone="ember" /> : null}
+        <section className={clsx('grid gap-4 md:grid-cols-2', showFloorLane && showBillingLane ? 'xl:grid-cols-5' : showFloorLane ? 'xl:grid-cols-3' : 'xl:grid-cols-2')}>
+          {showFloorLane ? <MetricCard label="Orders" value={String(dashboardQuery.data.orders.totalElements)} tone="forest" /> : null}
+          {showFloorLane ? <MetricCard label="Reservations" value={String(dashboardQuery.data.reservations.totalElements)} tone="ember" /> : null}
+          {showFloorLane ? <MetricCard label="Service requests" value={String(dashboardQuery.data.serviceRequests.totalElements)} tone="slate" /> : null}
+          {showBillingLane ? <MetricCard label="Invoices" value={String(dashboardQuery.data.invoices.totalElements)} tone="forest" /> : null}
+          {showBillingLane ? <MetricCard label="Payments" value={String(dashboardQuery.data.payments.totalElements)} tone="ember" /> : null}
         </section>
       ) : null}
 
-      {!canManageFloor && !canManageBilling ? (
+      {!showFloorLane && !showBillingLane ? (
         <section className="panel px-6 py-8 sm:px-8">
           <EmptyMessage message="No workspace sections are available for the current role." />
         </section>
       ) : null}
 
-      {canManageFloor ? (
+      {showFloorLane ? (
         <DataPanel testId="floor-overview-panel" title="Floor overview" subtitle="Scan the room by table, session, and active reservation before making seating moves.">
           {floorTablesQuery.isLoading ? <LoadingState label="Loading floor tables" /> : null}
           {floorTablesQuery.error ? <ErrorState error={floorTablesQuery.error} /> : null}
@@ -1144,7 +1210,7 @@ function StaffDashboardPage({
       ) : null}
 
       <section className="grid gap-6 xl:grid-cols-2">
-        {canManageFloor ? (
+        {showFloorLane ? (
           <>
             <div ref={reservationPanelRef}>
               <DataPanel testId="reservation-queue-panel" title="Reservation queue" subtitle="Confirm, seat, and complete reservations directly from the staff surface.">
@@ -1219,10 +1285,10 @@ function StaffDashboardPage({
           </>
         ) : null}
 
-        {canManageFloor || canManageBilling ? (
+        {showFloorLane || showBillingLane ? (
           <div ref={workbenchPanelRef}>
-            <DataPanel testId="operations-workbench" title="Operations workbench" subtitle="Handle order confirmations and billing actions from one surface.">
-              {canManageFloor ? (
+            <DataPanel testId="operations-workbench" title={workbenchTitle} subtitle={workbenchSubtitle}>
+              {showFloorLane ? (
                 <div className="mb-5 grid gap-3 md:grid-cols-[1fr_auto] md:items-end">
                   <label className="block">
                     <span className="mb-2 block text-xs font-bold uppercase tracking-[0.24em] text-slate">Search orders</span>
@@ -1281,16 +1347,16 @@ function StaffDashboardPage({
                 </div>
               ) : null}
 
-            {canManageFloor && ordersQuery.isLoading ? <LoadingState label="Loading orders" /> : null}
-            {canManageFloor && ordersQuery.error ? <ErrorState error={ordersQuery.error} /> : null}
-            {canManageFloor && staffMenuQuery.isLoading ? <LoadingState label="Loading menu items for POS" /> : null}
-            {canManageFloor && staffMenuQuery.error ? <ErrorState error={staffMenuQuery.error} /> : null}
-            {canManageBilling && invoicesQuery.isLoading ? <LoadingState label="Loading invoices" /> : null}
-            {canManageBilling && invoicesQuery.error ? <ErrorState error={invoicesQuery.error} /> : null}
-            {canManageBilling && paymentsQuery.isLoading ? <LoadingState label="Loading payments" /> : null}
-            {canManageBilling && paymentsQuery.error ? <ErrorState error={paymentsQuery.error} /> : null}
+            {showFloorLane && ordersQuery.isLoading ? <LoadingState label="Loading orders" /> : null}
+            {showFloorLane && ordersQuery.error ? <ErrorState error={ordersQuery.error} /> : null}
+            {showFloorLane && staffMenuQuery.isLoading ? <LoadingState label="Loading menu items for POS" /> : null}
+            {showFloorLane && staffMenuQuery.error ? <ErrorState error={staffMenuQuery.error} /> : null}
+            {showBillingLane && invoicesQuery.isLoading ? <LoadingState label="Loading invoices" /> : null}
+            {showBillingLane && invoicesQuery.error ? <ErrorState error={invoicesQuery.error} /> : null}
+            {showBillingLane && paymentsQuery.isLoading ? <LoadingState label="Loading payments" /> : null}
+            {showBillingLane && paymentsQuery.error ? <ErrorState error={paymentsQuery.error} /> : null}
             {createStaffOrderMutation.error ? <div className="mb-4"><InlineError error={createStaffOrderMutation.error} /></div> : null}
-            {(!canManageFloor || (ordersQuery.data && staffMenuQuery.data)) && (!canManageBilling || (invoicesQuery.data && paymentsQuery.data)) ? (
+            {(!showFloorLane || (ordersQuery.data && staffMenuQuery.data)) && (!showBillingLane || (invoicesQuery.data && paymentsQuery.data)) ? (
               <CashierWorkbench
                 orders={ordersQuery.data?.content ?? []}
                 invoices={invoicesQuery.data?.content ?? []}
@@ -1300,8 +1366,8 @@ function StaffDashboardPage({
                 orderError={workbenchOrderError}
                 invoiceError={createInvoiceMutation.error}
                 paymentError={recordPaymentMutation.error}
-                showOrderOperations={canManageFloor}
-                showBillingOperations={canManageBilling}
+                showOrderOperations={showFloorLane}
+                showBillingOperations={showBillingLane}
                 invoicePresenceByOrderId={invoicePresenceByOrderId}
                 onAddOrderItem={(payload) => orderItemMutation.mutate({ kind: 'add', ...payload })}
                 onCancelOrder={(orderId) => orderActionMutation.mutate({ kind: 'cancel', orderId })}
@@ -1315,7 +1381,7 @@ function StaffDashboardPage({
           </div>
         ) : null}
 
-        {canManageFloor ? (
+        {showFloorLane ? (
           <DataPanel testId="open-table-sessions-panel" title="Open table sessions" subtitle="See which tables already have a live session before seating or check-in.">
             {tableSessionsQuery.isLoading ? <LoadingState label="Loading table sessions" /> : null}
             {tableSessionsQuery.error ? <ErrorState error={tableSessionsQuery.error} /> : null}
@@ -1608,6 +1674,54 @@ function ShortcutCard({ title, body, to }: { title: string; body: string; to: st
       <p className="font-display text-2xl text-ink transition group-hover:text-forest">{title}</p>
       <p className="mt-3 text-sm leading-7 text-slate">{body}</p>
     </Link>
+  );
+}
+
+function describeWorkspaceLane(lane: WorkspaceLane, canManageFloor: boolean, canManageBilling: boolean) {
+  if (!canManageFloor && canManageBilling) {
+    return 'Cashier lane';
+  }
+
+  if (canManageFloor && !canManageBilling) {
+    return 'Floor lane';
+  }
+
+  if (lane === 'FLOOR') {
+    return 'Floor lane';
+  }
+
+  if (lane === 'BILLING') {
+    return 'Billing lane';
+  }
+
+  return 'Control lane';
+}
+
+function describeWorkspaceLaneBody(lane: WorkspaceLane, canManageFloor: boolean, canManageBilling: boolean) {
+  if (!canManageFloor && canManageBilling) {
+    return 'Collect payment, reconcile invoices, and stay focused on cashier handoff without floor-only noise.';
+  }
+
+  if (canManageFloor && !canManageBilling) {
+    return 'Keep reservations moving, clear service requests, and manage live tables without cashier-only distractions.';
+  }
+
+  if (lane === 'FLOOR') {
+    return 'Focus on reservations, sessions, and live table action while billing stays out of the way.';
+  }
+
+  if (lane === 'BILLING') {
+    return 'Focus on invoices and payments while floor operations stay out of the way.';
+  }
+
+  return 'Keep reservations moving, clear service requests, and monitor back-office activity without leaving the floor console.';
+}
+
+function RoleChip({ role }: { role: AuthSession['user']['roles'][number] }) {
+  return (
+    <span className="rounded-full border border-ink/10 bg-white/75 px-3 py-1 text-xs font-bold uppercase tracking-[0.2em] text-slate">
+      {role.toLowerCase()}
+    </span>
   );
 }
 

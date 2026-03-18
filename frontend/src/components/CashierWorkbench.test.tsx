@@ -191,4 +191,28 @@ describe('CashierWorkbench', () => {
       cancelled: false,
     });
   });
+
+  it('renders only the billing surface when order operations are hidden', () => {
+    renderWorkbench({
+      showOrderOperations: false,
+      showBillingOperations: true,
+    });
+
+    expect(screen.queryByText(/order operations/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/invoices and payments/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /record payment/i })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /add item/i })).not.toBeInTheDocument();
+  });
+
+  it('renders only the order surface when billing operations are hidden', () => {
+    renderWorkbench({
+      showOrderOperations: true,
+      showBillingOperations: false,
+    });
+
+    expect(screen.getByText(/order operations/i)).toBeInTheDocument();
+    expect(screen.queryByText(/invoices and payments/i)).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /add item/i })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /record payment/i })).not.toBeInTheDocument();
+  });
 });
