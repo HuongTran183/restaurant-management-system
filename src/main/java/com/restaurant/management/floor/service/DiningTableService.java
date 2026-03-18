@@ -4,10 +4,13 @@ import com.restaurant.management.common.error.BusinessConflictException;
 import com.restaurant.management.common.error.ResourceNotFoundException;
 import com.restaurant.management.common.web.PageResponse;
 import com.restaurant.management.floor.domain.DiningTable;
+import com.restaurant.management.floor.domain.TableStatus;
 import com.restaurant.management.floor.dto.DiningTableRequest;
 import com.restaurant.management.floor.dto.DiningTableResponse;
 import com.restaurant.management.floor.repository.DiningTableRepository;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,8 +26,37 @@ public class DiningTableService {
     }
 
     @Transactional(readOnly = true)
-    public PageResponse<DiningTableResponse> list(PageRequest pageRequest) {
-        return PageResponse.from(diningTableRepository.findAll(pageRequest).map(this::toResponse));
+    public PageResponse<DiningTableResponse> list(
+            PageRequest pageRequest,
+            Long areaId,
+            TableStatus status,
+            Boolean active,
+            String query
+    ) {
+        Specification<DiningTable> specification = (root, criteriaQuery, criteriaBuilder) -> criteriaBuilder.conjunction();
+        if (areaId != null) {
+            specification = specification.and((root, criteriaQuery, criteriaBuilder) ->
+                    criteriaBuilder.equal(root.get("area").get("id"), areaId));
+        }
+        if (status != null) {
+            specification = specification.and((root, criteriaQuery, criteriaBuilder) ->
+                    criteriaBuilder.equal(root.get("status"), status));
+        }
+        if (active != null) {
+            specification = specification.and((root, criteriaQuery, criteriaBuilder) ->
+                    criteriaBuilder.equal(root.get("active"), active));
+        }
+        if (hasText(query)) {
+            String normalized = like(query);
+            specification = specification.and((root, criteriaQuery, criteriaBuilder) -> criteriaBuilder.or(
+                    criteriaBuilder.like(criteriaBuilder.lower(root.get("code")), normalized),
+                    criteriaBuilder.like(criteriaBuilder.lower(root.get("name")), normalized),
+                    criteriaBuilder.like(criteriaBuilder.lower(root.get("area").get("name")), normalized)
+            ));
+        }
+
+        Page<DiningTable> page = diningTableRepository.findAll(specification, pageRequest);
+        return PageResponse.from(page.map(this::toResponse));
     }
 
     @Transactional(readOnly = true)
@@ -79,5 +111,13 @@ public class DiningTableService {
                 diningTable.getArea().getId(),
                 diningTable.getArea().getName()
         );
+    }
+
+    private boolean hasText(String value) {
+        return value != null && !value.isBlank();
+    }
+
+    private String like(String value) {
+        return "%" + value.trim().toLowerCase() + "%";
     }
 }

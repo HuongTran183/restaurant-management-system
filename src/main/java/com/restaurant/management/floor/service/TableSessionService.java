@@ -4,6 +4,7 @@ import com.restaurant.management.billing.domain.InvoiceStatus;
 import com.restaurant.management.billing.repository.InvoiceRepository;
 import com.restaurant.management.common.error.BusinessConflictException;
 import com.restaurant.management.common.error.ResourceNotFoundException;
+import com.restaurant.management.common.web.PageResponse;
 import com.restaurant.management.floor.domain.DiningTable;
 import com.restaurant.management.floor.domain.TableSession;
 import com.restaurant.management.floor.domain.TableSessionStatus;
@@ -18,6 +19,9 @@ import java.time.Instant;
 import java.util.Base64;
 import java.util.List;
 import java.util.Optional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -40,6 +44,35 @@ public class TableSessionService {
         this.diningTableService = diningTableService;
         this.orderRepository = orderRepository;
         this.invoiceRepository = invoiceRepository;
+    }
+
+    @Transactional(readOnly = true)
+    public PageResponse<TableSessionResponse> list(
+            PageRequest pageRequest,
+            TableSessionStatus status,
+            Long diningTableId,
+            String query
+    ) {
+        Specification<TableSession> specification = (root, criteriaQuery, criteriaBuilder) -> criteriaBuilder.conjunction();
+        if (status != null) {
+            specification = specification.and((root, criteriaQuery, criteriaBuilder) ->
+                    criteriaBuilder.equal(root.get("status"), status));
+        }
+        if (diningTableId != null) {
+            specification = specification.and((root, criteriaQuery, criteriaBuilder) ->
+                    criteriaBuilder.equal(root.get("diningTable").get("id"), diningTableId));
+        }
+        if (hasText(query)) {
+            String normalized = like(query);
+            specification = specification.and((root, criteriaQuery, criteriaBuilder) -> criteriaBuilder.or(
+                    criteriaBuilder.like(criteriaBuilder.lower(root.get("sessionCode")), normalized),
+                    criteriaBuilder.like(criteriaBuilder.lower(root.get("diningTable").get("code")), normalized),
+                    criteriaBuilder.like(criteriaBuilder.lower(root.get("diningTable").get("name")), normalized)
+            ));
+        }
+
+        Page<TableSession> page = tableSessionRepository.findAll(specification, pageRequest);
+        return PageResponse.from(page.map(this::toResponse));
     }
 
     @Transactional(readOnly = true)
@@ -135,10 +168,17 @@ public class TableSessionService {
         );
     }
 
+    private boolean hasText(String value) {
+        return value != null && !value.isBlank();
+    }
+
+    private String like(String value) {
+        return "%" + value.trim().toLowerCase() + "%";
+    }
+
     private String nextSessionCode() {
         byte[] buffer = new byte[6];
         secureRandom.nextBytes(buffer);
         return "TS-" + Base64.getUrlEncoder().withoutPadding().encodeToString(buffer).toUpperCase();
     }
 }
-
