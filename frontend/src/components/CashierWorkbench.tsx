@@ -1,7 +1,7 @@
 import clsx from 'clsx';
 import { useEffect, useMemo, useState } from 'react';
-import type { ReactNode } from 'react';
-import type { Invoice, Order, Payment, PaymentMethod } from '../lib/api';
+import type { FormEvent, ReactNode } from 'react';
+import type { Invoice, MenuItem, Order, OrderItemStatus, Payment, PaymentMethod } from '../lib/api';
 
 const PAYMENT_METHOD_OPTIONS: PaymentMethod[] = ['CASH', 'CARD', 'BANK_TRANSFER', 'E_WALLET'];
 
@@ -9,6 +9,7 @@ type CashierWorkbenchProps = {
   orders: Order[];
   invoices: Invoice[];
   payments: Payment[];
+  menuItems: MenuItem[];
   isBusy: boolean;
   orderError: unknown;
   invoiceError: unknown;
@@ -16,10 +17,12 @@ type CashierWorkbenchProps = {
   showOrderOperations: boolean;
   showBillingOperations: boolean;
   invoicePresenceByOrderId: Record<number, boolean>;
+  onAddOrderItem: (payload: { orderId: number; menuItemId: number; quantity: number; note?: string }) => void;
   onConfirmOrder: (orderId: number) => void;
   onCancelOrder: (orderId: number) => void;
   onCreateInvoice: (order: Order) => void;
   onRecordPayment: (payload: { invoiceId: number; amount: number; method: PaymentMethod; note?: string }) => void;
+  onUpdateOrderItem: (payload: { orderId: number; orderItemId: number; quantity?: number; note?: string; cancelled?: boolean }) => void;
 };
 
 type PaymentFormState = {
@@ -33,6 +36,7 @@ export function CashierWorkbench({
   orders,
   invoices,
   payments,
+  menuItems,
   isBusy,
   orderError,
   invoiceError,
@@ -40,10 +44,12 @@ export function CashierWorkbench({
   showOrderOperations,
   showBillingOperations,
   invoicePresenceByOrderId,
+  onAddOrderItem,
   onConfirmOrder,
   onCancelOrder,
   onCreateInvoice,
   onRecordPayment,
+  onUpdateOrderItem,
 }: CashierWorkbenchProps) {
   const [paymentForm, setPaymentForm] = useState<PaymentFormState>({
     invoiceId: '',
@@ -113,6 +119,44 @@ export function CashierWorkbench({
     });
   }
 
+  function submitAddOrderItem(event: FormEvent<HTMLFormElement>, orderId: number) {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    const menuItemId = Number(formData.get('menuItemId'));
+    const quantity = Number(formData.get('quantity'));
+    const note = String(formData.get('note') ?? '').trim();
+
+    if (!menuItemId || Number.isNaN(quantity) || quantity <= 0) {
+      return;
+    }
+
+    onAddOrderItem({
+      orderId,
+      menuItemId,
+      quantity,
+      note: note || undefined,
+    });
+  }
+
+  function submitOrderItemUpdate(event: FormEvent<HTMLFormElement>, orderId: number, orderItemId: number) {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    const quantity = Number(formData.get('quantity'));
+    const note = String(formData.get('note') ?? '').trim();
+
+    if (Number.isNaN(quantity) || quantity <= 0) {
+      return;
+    }
+
+    onUpdateOrderItem({
+      orderId,
+      orderItemId,
+      quantity,
+      note: note || undefined,
+      cancelled: false,
+    });
+  }
+
   const layoutClass = showOrderOperations && showBillingOperations
     ? 'grid gap-6 xl:grid-cols-[1.05fr_0.95fr]'
     : 'grid gap-6';
@@ -161,6 +205,130 @@ export function CashierWorkbench({
                         <div className="grid gap-2 sm:grid-cols-2">
                           <InfoPair label="Subtotal" value={formatMoney(order.subtotal)} />
                           <InfoPair label="Total" value={formatMoney(order.totalAmount)} />
+                        </div>
+                        <div className="space-y-3 rounded-[22px] border border-ink/10 bg-cream/50 px-4 py-4">
+                          <div className="flex items-center justify-between gap-3">
+                            <p className="text-xs font-bold uppercase tracking-[0.24em] text-slate">Ticket items</p>
+                            <span className="text-xs font-bold uppercase tracking-[0.18em] text-slate">{order.items.length} line(s)</span>
+                          </div>
+
+                          {order.items.length ? (
+                            <div className="space-y-3">
+                              {order.items.map((item) => (
+                                <div key={item.id} className="rounded-[20px] border border-ink/10 bg-white/80 px-4 py-4">
+                                  <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
+                                    <div className="space-y-2">
+                                      <div className="flex flex-wrap items-center gap-2">
+                                        <p className="font-semibold text-ink">{item.itemName}</p>
+                                        <Badge tone={orderItemTone(item.status)}>{item.status}</Badge>
+                                      </div>
+                                      <p className="text-sm leading-7 text-slate">
+                                        {item.quantity} x {formatMoney(item.unitPrice)} = {formatMoney(item.lineTotal)}
+                                      </p>
+                                      {item.note ? <p className="text-sm leading-7 text-slate">Note: {item.note}</p> : null}
+                                    </div>
+
+                                    {order.status === 'DRAFT' && item.status !== 'CANCELLED' ? (
+                                      <form
+                                        className="grid gap-3 rounded-[20px] border border-ink/10 bg-white/75 p-3 md:min-w-[22rem] md:grid-cols-[6rem_1fr]"
+                                        onSubmit={(event) => submitOrderItemUpdate(event, order.id, item.id)}
+                                      >
+                                        <label className="block">
+                                          <span className="mb-2 block text-xs font-bold uppercase tracking-[0.18em] text-slate">Qty</span>
+                                          <input
+                                            aria-label={`Quantity for ${item.itemName} on ${order.orderCode}`}
+                                            className="field"
+                                            defaultValue={String(item.quantity)}
+                                            min="1"
+                                            name="quantity"
+                                            step="1"
+                                            type="number"
+                                          />
+                                        </label>
+                                        <label className="block">
+                                          <span className="mb-2 block text-xs font-bold uppercase tracking-[0.18em] text-slate">Line note</span>
+                                          <input
+                                            aria-label={`Line note for ${item.itemName} on ${order.orderCode}`}
+                                            className="field"
+                                            defaultValue={item.note ?? ''}
+                                            name="note"
+                                            placeholder="Guest preference, allergy, course..."
+                                          />
+                                        </label>
+                                        <div className="flex flex-wrap gap-2 md:col-span-2">
+                                          <button className="button-chip-primary" disabled={isBusy} type="submit">
+                                            {isBusy ? 'Saving...' : 'Update line'}
+                                          </button>
+                                          <button
+                                            className="button-chip"
+                                            disabled={isBusy}
+                                            onClick={() => onUpdateOrderItem({ orderId: order.id, orderItemId: item.id, cancelled: true })}
+                                            type="button"
+                                          >
+                                            {isBusy ? 'Saving...' : 'Cancel line'}
+                                          </button>
+                                        </div>
+                                      </form>
+                                    ) : null}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <EmptyState message="No line items yet. Start the ticket by adding the first dish." />
+                          )}
+
+                          {order.status === 'DRAFT' || order.status === 'CONFIRMED' ? (
+                            menuItems.length ? (
+                              <form className="grid gap-3 rounded-[22px] border border-forest/15 bg-forest/5 p-4 md:grid-cols-[1.2fr_7rem_1fr_auto]" onSubmit={(event) => submitAddOrderItem(event, order.id)}>
+                                <label className="block">
+                                  <span className="mb-2 block text-xs font-bold uppercase tracking-[0.18em] text-slate">Menu item</span>
+                                  <select
+                                    aria-label={`Add menu item for ${order.orderCode}`}
+                                    className="field"
+                                    defaultValue={String(menuItems[0]?.id ?? '')}
+                                    name="menuItemId"
+                                  >
+                                    {menuItems.map((menuItem) => (
+                                      <option key={menuItem.id} value={menuItem.id}>
+                                        {menuItem.name} • {formatMoney(menuItem.price)}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </label>
+                                <label className="block">
+                                  <span className="mb-2 block text-xs font-bold uppercase tracking-[0.18em] text-slate">Qty</span>
+                                  <input
+                                    aria-label={`Add quantity for ${order.orderCode}`}
+                                    className="field"
+                                    defaultValue="1"
+                                    min="1"
+                                    name="quantity"
+                                    step="1"
+                                    type="number"
+                                  />
+                                </label>
+                                <label className="block">
+                                  <span className="mb-2 block text-xs font-bold uppercase tracking-[0.18em] text-slate">Note</span>
+                                  <input
+                                    aria-label={`Add note for ${order.orderCode}`}
+                                    className="field"
+                                    name="note"
+                                    placeholder="Course, allergy, rush..."
+                                  />
+                                </label>
+                                <div className="flex items-end">
+                                  <button className="button-chip-primary w-full justify-center" disabled={isBusy} type="submit">
+                                    {isBusy ? 'Saving...' : 'Add item'}
+                                  </button>
+                                </div>
+                              </form>
+                            ) : (
+                              <div className="rounded-[20px] border border-dashed border-ink/15 bg-white/70 px-4 py-3 text-sm leading-7 text-slate">
+                                No active menu items are available to add right now.
+                              </div>
+                            )
+                          ) : null}
                         </div>
                         {hasPendingNewItems && order.status === 'CONFIRMED' ? (
                           <div className="rounded-[20px] border border-ember/20 bg-ember/10 px-4 py-3 text-sm leading-7 text-slate">
@@ -377,6 +545,17 @@ function Badge({ children, tone }: { children: ReactNode; tone: 'forest' | 'embe
   }[tone];
 
   return <span className={clsx('rounded-full border px-3 py-1 text-xs font-bold uppercase tracking-[0.2em]', styles)}>{children}</span>;
+}
+
+function orderItemTone(status: OrderItemStatus): 'forest' | 'ember' | 'warm' | 'neutral' {
+  switch (status) {
+    case 'NEW':
+      return 'ember';
+    case 'CONFIRMED':
+      return 'forest';
+    case 'CANCELLED':
+      return 'warm';
+  }
 }
 
 function InfoPair({ label, value }: { label: string; value: string }) {

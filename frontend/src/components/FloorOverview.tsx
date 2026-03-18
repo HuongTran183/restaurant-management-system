@@ -2,7 +2,15 @@ import clsx from 'clsx';
 import { useDeferredValue, useMemo, useState } from 'react';
 import type { DiningTable, Reservation, ReservationStatus, TableSession, TableStatus } from '../lib/api';
 
+export type FloorOverviewActionState = { kind: 'open-session' | 'close-session' | 'seat-walk-in'; tableId: number } | null;
+
 type FloorOverviewProps = {
+  actionState?: FloorOverviewActionState;
+  onCloseSession?: (session: TableSession, table: DiningTable) => void;
+  onJumpToOrder?: (session: TableSession, table: DiningTable) => void;
+  onJumpToReservation?: (reservation: Reservation, table: DiningTable) => void;
+  onOpenSession?: (table: DiningTable) => void;
+  onSeatWalkIn?: (table: DiningTable) => void;
   reservations: Reservation[];
   sessions: TableSession[];
   tables: DiningTable[];
@@ -11,7 +19,17 @@ type FloorOverviewProps = {
 const ACTIVE_RESERVATION_STATUSES = new Set<ReservationStatus>(['PENDING', 'CONFIRMED', 'CHECKED_IN']);
 const TABLE_STATUSES: Array<'ALL' | TableStatus> = ['ALL', 'AVAILABLE', 'OCCUPIED', 'RESERVED', 'CLEANING', 'LOCKED'];
 
-export function FloorOverview({ reservations, sessions, tables }: FloorOverviewProps) {
+export function FloorOverview({
+  actionState = null,
+  onCloseSession,
+  onJumpToOrder,
+  onJumpToReservation,
+  onOpenSession,
+  onSeatWalkIn,
+  reservations,
+  sessions,
+  tables,
+}: FloorOverviewProps) {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | TableStatus>('ALL');
   const deferredSearch = useDeferredValue(search);
@@ -129,6 +147,15 @@ export function FloorOverview({ reservations, sessions, tables }: FloorOverviewP
           {filteredTables.map((table) => {
             const session = sessionByTableId.get(table.id);
             const reservation = activeReservationByTableId.get(table.id);
+            const isBusy = actionState?.tableId === table.id;
+            const canOpenSession = session === undefined && table.status !== 'CLEANING' && table.status !== 'LOCKED';
+            const canSeatWalkIn = canOpenSession && reservation === undefined && table.status === 'AVAILABLE';
+            const actionLabel =
+              actionState?.kind === 'seat-walk-in'
+                ? 'Seating...'
+                : actionState?.kind === 'close-session'
+                  ? 'Closing...'
+                  : 'Opening...';
 
             return (
               <article key={table.id} className="rounded-[28px] border border-ink/10 bg-white/75 p-5 shadow-float">
@@ -154,6 +181,69 @@ export function FloorOverview({ reservations, sessions, tables }: FloorOverviewP
                     value={reservation ? reservation.reservationCode : 'No active reservation'}
                     helper={reservation ? `${reservation.customerName} • ${formatDateTime(reservation.reservationTime)}` : 'No reservation assigned'}
                   />
+                </div>
+
+                <div className="mt-4 border-t border-ink/10 pt-4">
+                  <p className="text-xs font-bold uppercase tracking-[0.22em] text-slate">Next move</p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {canSeatWalkIn ? (
+                      <button
+                        aria-label={`Seat walk-in for ${table.code}`}
+                        className="button-chip-primary"
+                        disabled={isBusy}
+                        onClick={() => onSeatWalkIn?.(table)}
+                        type="button"
+                      >
+                        {isBusy && actionState?.kind === 'seat-walk-in' ? actionLabel : 'Seat walk-in'}
+                      </button>
+                    ) : null}
+
+                    {canOpenSession ? (
+                      <button
+                        aria-label={`Open session for ${table.code}`}
+                        className="button-chip"
+                        disabled={isBusy}
+                        onClick={() => onOpenSession?.(table)}
+                        type="button"
+                      >
+                        {isBusy && actionState?.kind === 'open-session' ? actionLabel : 'Open session'}
+                      </button>
+                    ) : null}
+
+                    {session ? (
+                      <button
+                        aria-label={`Open order flow for ${table.code}`}
+                        className="button-chip-primary"
+                        onClick={() => onJumpToOrder?.(session, table)}
+                        type="button"
+                      >
+                        Open order flow
+                      </button>
+                    ) : null}
+
+                    {reservation ? (
+                      <button
+                        aria-label={`Open reservation for ${table.code}`}
+                        className="button-chip"
+                        onClick={() => onJumpToReservation?.(reservation, table)}
+                        type="button"
+                      >
+                        Open reservation
+                      </button>
+                    ) : null}
+
+                    {session ? (
+                      <button
+                        aria-label={`Close session for ${table.code}`}
+                        className="button-chip"
+                        disabled={isBusy}
+                        onClick={() => onCloseSession?.(session, table)}
+                        type="button"
+                      >
+                        {isBusy && actionState?.kind === 'close-session' ? actionLabel : 'Close session'}
+                      </button>
+                    ) : null}
+                  </div>
                 </div>
               </article>
             );

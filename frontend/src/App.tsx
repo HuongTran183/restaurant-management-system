@@ -1,6 +1,6 @@
 import clsx from 'clsx';
 import type { FormEvent, ReactNode } from 'react';
-import { useDeferredValue, useEffect, useState } from 'react';
+import { useDeferredValue, useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, Navigate, NavLink, Route, Routes, useNavigate, useParams } from 'react-router-dom';
 import {
@@ -21,7 +21,7 @@ import {
   type ServiceRequestStatus,
 } from './lib/api';
 import { CashierWorkbench } from './components/CashierWorkbench';
-import { FloorOverview } from './components/FloorOverview';
+import { FloorOverview, type FloorOverviewActionState } from './components/FloorOverview';
 import { clearSession, msUntilSessionRefresh, readSession, saveSession, shouldRefreshSession } from './lib/session';
 
 const initialSession = typeof window === 'undefined' ? null : readSession();
@@ -628,6 +628,7 @@ function StaffLoginPage({
 
 type ReservationActionInput =
   | { reservationId: number; kind: 'confirm'; internalNote?: string }
+  | { reservationId: number; kind: 'cancel'; note?: string }
   | { reservationId: number; kind: 'check-in'; diningTableId: number; internalNote?: string }
   | { reservationId: number; kind: 'complete' };
 
@@ -636,6 +637,17 @@ type OrderActionInput = { orderId: number; kind: 'confirm' | 'cancel' };
 type PaymentInput = { invoiceId: number; amount: number; method: PaymentMethod; note?: string };
 
 type InvoiceCreationInput = { orderId: number; orderCode: string };
+
+type FloorActionInput =
+  | { kind: 'open-session'; table: DiningTable }
+  | { kind: 'close-session'; session: TableSession; table: DiningTable }
+  | { kind: 'seat-walk-in'; table: DiningTable };
+
+type ReservationQueueScope = 'ACTIVE' | 'HISTORY' | 'ALL';
+
+const ACTIVE_RESERVATION_STATUSES: ReservationStatus[] = ['PENDING', 'CONFIRMED', 'CHECKED_IN'];
+const HISTORY_RESERVATION_STATUSES: ReservationStatus[] = ['COMPLETED', 'CANCELLED'];
+const ALL_RESERVATION_STATUSES: ReservationStatus[] = [...ACTIVE_RESERVATION_STATUSES, ...HISTORY_RESERVATION_STATUSES];
 
 function StaffDashboardPage({
   session,
@@ -650,6 +662,35 @@ function StaffDashboardPage({
   const userRoles = session?.user.roles ?? [];
   const canManageFloor = userRoles.some((role) => role === 'ADMIN' || role === 'MANAGER' || role === 'WAITER');
   const canManageBilling = userRoles.some((role) => role === 'ADMIN' || role === 'MANAGER' || role === 'CASHIER');
+  const [reservationQueueScope, setReservationQueueScope] = useState<ReservationQueueScope>('ACTIVE');
+  const [reservationSearch, setReservationSearch] = useState('');
+  const [orderSearch, setOrderSearch] = useState('');
+  const [orderSessionFilter, setOrderSessionFilter] = useState<number | null>(null);
+  const [floorActionState, setFloorActionState] = useState<FloorOverviewActionState>(null);
+  const reservationPanelRef = useRef<HTMLDivElement | null>(null);
+  const workbenchPanelRef = useRef<HTMLDivElement | null>(null);
+
+  const scrollToPanel = (ref: { current: HTMLDivElement | null }) => {
+    window.requestAnimationFrame(() => {
+      ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  };
+
+  const focusReservationWorkflow = (reservation: Reservation) => {
+    setReservationQueueScope(
+      reservation.status === 'CANCELLED' || reservation.status === 'COMPLETED'
+        ? 'HISTORY'
+        : 'ACTIVE',
+    );
+    setReservationSearch(reservation.reservationCode);
+    scrollToPanel(reservationPanelRef);
+  };
+
+  const focusOrderWorkflow = (options: { orderCode?: string; sessionId: number }) => {
+    setOrderSessionFilter(options.sessionId);
+    setOrderSearch(options.orderCode ?? '');
+    scrollToPanel(workbenchPanelRef);
+  };
 
   const runStaffRequest = async <T,>(requestFn: (token: string) => Promise<T>): Promise<T> => {
     if (!session) {
@@ -691,6 +732,28 @@ function StaffDashboardPage({
     });
   };
 
+  const loadReservationsByStatuses = async (
+    statuses: ReservationStatus[],
+    query?: string,
+    scope: ReservationQueueScope = 'ACTIVE',
+  ): Promise<Reservation[]> => {
+    const keyword = query?.trim() || undefined;
+    const pages = await Promise.all(
+      statuses.map((status) =>
+        loadAllPages((token, page, size) => staffApi.reservations(token, { page, size, status, query: keyword })),
+      ),
+    );
+
+    const direction = scope === 'HISTORY' ? -1 : 1;
+    return pages
+      .flat()
+      .filter((reservation, index, reservations) => reservations.findIndex((candidate) => candidate.id === reservation.id) === index)
+      .sort(
+        (left, right) =>
+          direction * (new Date(left.reservationTime).getTime() - new Date(right.reservationTime).getTime()),
+      );
+  };
+
   const dashboardQuery = useQuery({
     queryKey: ['staff', 'dashboard', session?.accessToken, canManageFloor, canManageBilling],
     queryFn: () => runStaffRequest((token) => staffApi.dashboard(token, { canManageFloor, canManageBilling })),
@@ -699,25 +762,23 @@ function StaffDashboardPage({
   });
 
   const reservationsQuery = useQuery({
-    queryKey: ['staff', 'reservations', session?.accessToken],
-    queryFn: () => runStaffRequest((token) => staffApi.reservations(token, { size: 50 })),
+    queryKey: ['staff', 'reservations', session?.accessToken, reservationQueueScope, reservationSearch],
+    queryFn: () => {
+      const statuses =
+        reservationQueueScope === 'ACTIVE'
+          ? ACTIVE_RESERVATION_STATUSES
+          : reservationQueueScope === 'HISTORY'
+            ? HISTORY_RESERVATION_STATUSES
+            : ALL_RESERVATION_STATUSES;
+      return loadReservationsByStatuses(statuses, reservationSearch, reservationQueueScope);
+    },
     enabled: Boolean(session?.accessToken) && canManageFloor,
     retry: false,
   });
 
   const floorReservationsQuery = useQuery({
     queryKey: ['staff', 'floor-reservations', session?.accessToken],
-    queryFn: async () => {
-      const [pending, confirmed, checkedIn] = await Promise.all([
-        loadAllPages((token, page, size) => staffApi.reservations(token, { page, size, status: 'PENDING' })),
-        loadAllPages((token, page, size) => staffApi.reservations(token, { page, size, status: 'CONFIRMED' })),
-        loadAllPages((token, page, size) => staffApi.reservations(token, { page, size, status: 'CHECKED_IN' })),
-      ]);
-
-      return [...pending, ...confirmed, ...checkedIn]
-        .sort((left, right) => new Date(left.reservationTime).getTime() - new Date(right.reservationTime).getTime())
-        .filter((reservation, index, reservations) => reservations.findIndex((candidate) => candidate.id === reservation.id) === index);
-    },
+    queryFn: () => loadReservationsByStatuses(ACTIVE_RESERVATION_STATUSES),
     enabled: Boolean(session?.accessToken) && canManageFloor,
     retry: false,
   });
@@ -726,6 +787,13 @@ function StaffDashboardPage({
     queryKey: ['staff', 'service-requests', session?.accessToken],
     queryFn: () => runStaffRequest((token) => staffApi.serviceRequests(token, { size: 20, status: 'OPEN' })),
     enabled: Boolean(session?.accessToken) && canManageFloor,
+    retry: false,
+  });
+
+  const staffMenuQuery = useQuery({
+    queryKey: ['staff', 'menu-items'],
+    queryFn: publicApi.menu,
+    enabled: canManageFloor,
     retry: false,
   });
 
@@ -751,8 +819,15 @@ function StaffDashboardPage({
   });
 
   const ordersQuery = useQuery({
-    queryKey: ['staff', 'orders', session?.accessToken],
-    queryFn: () => runStaffRequest((token) => staffApi.orders(token, { size: 10 })),
+    queryKey: ['staff', 'orders', session?.accessToken, orderSearch, orderSessionFilter],
+    queryFn: () =>
+      runStaffRequest((token) =>
+        staffApi.orders(token, {
+          size: orderSessionFilter === null && orderSearch.trim() === '' ? 12 : 30,
+          tableSessionId: orderSessionFilter ?? undefined,
+          query: orderSearch.trim() || undefined,
+        }),
+      ),
     enabled: Boolean(session?.accessToken) && canManageFloor,
     retry: false,
   });
@@ -838,6 +913,8 @@ function StaffDashboardPage({
         switch (action.kind) {
           case 'confirm':
             return staffApi.confirmReservation(token, action.reservationId, { internalNote: action.internalNote });
+          case 'cancel':
+            return staffApi.cancelReservation(token, action.reservationId, { note: action.note });
           case 'check-in':
             return staffApi.checkInReservation(token, action.reservationId, {
               diningTableId: action.diningTableId,
@@ -849,6 +926,67 @@ function StaffDashboardPage({
       }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['staff'] });
+    },
+  });
+
+  const floorActionMutation = useMutation({
+    mutationFn: (action: FloorActionInput) =>
+      runStaffRequest(async (token) => {
+        switch (action.kind) {
+          case 'open-session': {
+            const sessionResponse = await staffApi.openTableSession(token, action.table.id);
+            return { kind: action.kind, session: sessionResponse, table: action.table } as const;
+          }
+          case 'close-session': {
+            const sessionResponse = await staffApi.closeTableSession(token, action.session.id);
+            return { kind: action.kind, session: sessionResponse, table: action.table } as const;
+          }
+          case 'seat-walk-in': {
+            const sessionResponse = await staffApi.openTableSession(token, action.table.id);
+            const order = await staffApi.createOrder(token, {
+              orderType: 'DINE_IN',
+              tableSessionId: sessionResponse.id,
+              note: `Walk-in started from ${action.table.code}`,
+            });
+            return { kind: action.kind, order, session: sessionResponse, table: action.table } as const;
+          }
+        }
+      }),
+    onMutate: (action) => {
+      setFloorActionState({ kind: action.kind, tableId: action.table.id });
+    },
+    onSuccess: (result) => {
+      void queryClient.invalidateQueries({ queryKey: ['staff'] });
+
+      if (result.kind === 'close-session') {
+        setOrderSessionFilter((current) => (current === result.session.id ? null : current));
+        return;
+      }
+
+      if (result.kind === 'open-session') {
+        focusOrderWorkflow({ sessionId: result.session.id });
+        return;
+      }
+
+      focusOrderWorkflow({ orderCode: result.order.orderCode, sessionId: result.session.id });
+    },
+    onSettled: () => {
+      setFloorActionState(null);
+    },
+  });
+
+  const createStaffOrderMutation = useMutation({
+    mutationFn: (payload: { note?: string; tableSessionId: number }) =>
+      runStaffRequest((token) =>
+        staffApi.createOrder(token, {
+          orderType: 'DINE_IN',
+          tableSessionId: payload.tableSessionId,
+          note: payload.note,
+        }),
+      ),
+    onSuccess: (order, payload) => {
+      void queryClient.invalidateQueries({ queryKey: ['staff'] });
+      focusOrderWorkflow({ orderCode: order.orderCode, sessionId: order.tableSessionId ?? payload.tableSessionId });
     },
   });
 
@@ -871,6 +1009,36 @@ function StaffDashboardPage({
       }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['staff'] });
+    },
+  });
+
+  const orderItemMutation = useMutation({
+    mutationFn: (
+      action:
+        | { kind: 'add'; orderId: number; menuItemId: number; quantity: number; note?: string }
+        | { kind: 'update'; orderId: number; orderItemId: number; quantity?: number; note?: string; cancelled?: boolean },
+    ) =>
+      runStaffRequest((token) => {
+        switch (action.kind) {
+          case 'add':
+            return staffApi.addOrderItem(token, action.orderId, {
+              menuItemId: action.menuItemId,
+              quantity: action.quantity,
+              note: action.note,
+            });
+          case 'update':
+            return staffApi.updateOrderItem(token, action.orderId, action.orderItemId, {
+              quantity: action.quantity,
+              note: action.note,
+              cancelled: action.cancelled,
+            });
+        }
+      }),
+    onSuccess: (order) => {
+      void queryClient.invalidateQueries({ queryKey: ['staff'] });
+      if (order.tableSessionId !== null) {
+        focusOrderWorkflow({ orderCode: order.orderCode, sessionId: order.tableSessionId });
+      }
     },
   });
 
@@ -897,6 +1065,17 @@ function StaffDashboardPage({
   const refreshWorkspace = () => {
     void queryClient.invalidateQueries({ queryKey: ['staff'] });
   };
+
+  const activeSession = orderSessionFilter === null
+    ? null
+    : tableSessionsQuery.data?.find((sessionItem) => sessionItem.id === orderSessionFilter) ?? null;
+  const visibleOrders = ordersQuery.data?.content ?? [];
+  const workbenchBusy = orderActionMutation.isPending
+    || orderItemMutation.isPending
+    || createInvoiceMutation.isPending
+    || createStaffOrderMutation.isPending
+    || recordPaymentMutation.isPending;
+  const workbenchOrderError = orderActionMutation.error ?? orderItemMutation.error;
 
   return (
     <div className="space-y-8">
@@ -940,15 +1119,22 @@ function StaffDashboardPage({
       ) : null}
 
       {canManageFloor ? (
-        <DataPanel title="Floor overview" subtitle="Scan the room by table, session, and active reservation before making seating moves.">
+        <DataPanel testId="floor-overview-panel" title="Floor overview" subtitle="Scan the room by table, session, and active reservation before making seating moves.">
           {floorTablesQuery.isLoading ? <LoadingState label="Loading floor tables" /> : null}
           {floorTablesQuery.error ? <ErrorState error={floorTablesQuery.error} /> : null}
           {tableSessionsQuery.isLoading ? <LoadingState label="Loading table sessions" /> : null}
           {tableSessionsQuery.error ? <ErrorState error={tableSessionsQuery.error} /> : null}
           {floorReservationsQuery.isLoading ? <LoadingState label="Loading active reservations" /> : null}
           {floorReservationsQuery.error ? <ErrorState error={floorReservationsQuery.error} /> : null}
+          {floorActionMutation.error ? <div className="mt-4"><InlineError error={floorActionMutation.error} /></div> : null}
           {floorTablesQuery.data && tableSessionsQuery.data && floorReservationsQuery.data ? (
             <FloorOverview
+              actionState={floorActionState}
+              onCloseSession={(sessionItem, table) => floorActionMutation.mutate({ kind: 'close-session', session: sessionItem, table })}
+              onJumpToOrder={(sessionItem) => focusOrderWorkflow({ sessionId: sessionItem.id })}
+              onJumpToReservation={(reservation) => focusReservationWorkflow(reservation)}
+              onOpenSession={(table) => floorActionMutation.mutate({ kind: 'open-session', table })}
+              onSeatWalkIn={(table) => floorActionMutation.mutate({ kind: 'seat-walk-in', table })}
               reservations={floorReservationsQuery.data}
               sessions={tableSessionsQuery.data}
               tables={floorTablesQuery.data}
@@ -960,7 +1146,48 @@ function StaffDashboardPage({
       <section className="grid gap-6 xl:grid-cols-2">
         {canManageFloor ? (
           <>
-            <DataPanel title="Reservation queue" subtitle="Confirm, seat, and complete reservations directly from the staff surface.">
+            <div ref={reservationPanelRef}>
+              <DataPanel testId="reservation-queue-panel" title="Reservation queue" subtitle="Confirm, seat, and complete reservations directly from the staff surface.">
+                <div className="mb-5 grid gap-3 md:grid-cols-[auto_1fr_auto] md:items-end">
+                  <div className="inline-flex rounded-full border border-ink/10 bg-white/80 p-1">
+                    {(['ACTIVE', 'HISTORY', 'ALL'] as ReservationQueueScope[]).map((scope) => (
+                      <button
+                        key={scope}
+                        className={clsx(
+                          'rounded-full px-4 py-2 text-xs font-bold uppercase tracking-[0.18em] transition',
+                          reservationQueueScope === scope ? 'bg-forest text-cream' : 'text-slate hover:text-ink',
+                        )}
+                        onClick={() => setReservationQueueScope(scope)}
+                        type="button"
+                      >
+                        {scope === 'ACTIVE' ? 'Active' : scope === 'HISTORY' ? 'History' : 'All'}
+                      </button>
+                    ))}
+                  </div>
+
+                  <label className="block">
+                    <span className="mb-2 block text-xs font-bold uppercase tracking-[0.24em] text-slate">Search reservations</span>
+                    <input
+                      className="field"
+                      onChange={(event) => setReservationSearch(event.target.value)}
+                      placeholder="Code, customer, or phone"
+                      value={reservationSearch}
+                    />
+                  </label>
+
+                  <button
+                    className="button-chip"
+                    disabled={reservationSearch.trim() === '' && reservationQueueScope === 'ACTIVE'}
+                    onClick={() => {
+                      setReservationQueueScope('ACTIVE');
+                      setReservationSearch('');
+                    }}
+                    type="button"
+                  >
+                    Clear filters
+                  </button>
+                </div>
+
               {reservationsQuery.isLoading ? <LoadingState label="Loading reservations" /> : null}
               {reservationsQuery.error ? <ErrorState error={reservationsQuery.error} /> : null}
               {tablesQuery.isLoading ? <LoadingState label="Loading table options" /> : null}
@@ -971,12 +1198,13 @@ function StaffDashboardPage({
                   availableTables={tablesQuery.data ?? []}
                   isMutating={reservationActionMutation.isPending}
                   onAction={(action) => reservationActionMutation.mutate(action)}
-                  reservations={reservationsQuery.data.content}
+                  reservations={reservationsQuery.data}
                 />
               ) : null}
-            </DataPanel>
+              </DataPanel>
+            </div>
 
-            <DataPanel title="Open service requests" subtitle="Resolve waiter calls and bill requests as soon as they land.">
+            <DataPanel testId="service-requests-panel" title="Open service requests" subtitle="Resolve waiter calls and bill requests as soon as they land.">
               {serviceRequestsQuery.isLoading ? <LoadingState label="Loading service requests" /> : null}
               {serviceRequestsQuery.error ? <ErrorState error={serviceRequestsQuery.error} /> : null}
               {serviceRequestMutation.error ? <div className="mt-4"><InlineError error={serviceRequestMutation.error} /></div> : null}
@@ -992,36 +1220,103 @@ function StaffDashboardPage({
         ) : null}
 
         {canManageFloor || canManageBilling ? (
-          <DataPanel title="Operations workbench" subtitle="Handle order confirmations and billing actions from one surface.">
+          <div ref={workbenchPanelRef}>
+            <DataPanel testId="operations-workbench" title="Operations workbench" subtitle="Handle order confirmations and billing actions from one surface.">
+              {canManageFloor ? (
+                <div className="mb-5 grid gap-3 md:grid-cols-[1fr_auto] md:items-end">
+                  <label className="block">
+                    <span className="mb-2 block text-xs font-bold uppercase tracking-[0.24em] text-slate">Search orders</span>
+                    <input
+                      className="field"
+                      onChange={(event) => setOrderSearch(event.target.value)}
+                      placeholder="Order code or note"
+                      value={orderSearch}
+                    />
+                  </label>
+
+                  <button
+                    className="button-chip"
+                    disabled={orderSearch.trim() === '' && orderSessionFilter === null}
+                    onClick={() => {
+                      setOrderSearch('');
+                      setOrderSessionFilter(null);
+                    }}
+                    type="button"
+                  >
+                    Clear order focus
+                  </button>
+                </div>
+              ) : null}
+
+              {activeSession ? (
+                <div className="mb-5 rounded-[24px] border border-forest/15 bg-forest/5 px-4 py-4">
+                  <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                    <div>
+                      <p className="text-xs font-bold uppercase tracking-[0.24em] text-forest">Focused session</p>
+                      <p className="mt-2 text-sm leading-7 text-slate">
+                        {activeSession.tableCode} • {activeSession.tableName} • Opened {formatDateTime(activeSession.openedAt)}
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {visibleOrders.length === 0 ? (
+                        <button
+                          className="button-chip-primary"
+                          disabled={createStaffOrderMutation.isPending}
+                          onClick={() =>
+                            createStaffOrderMutation.mutate({
+                              note: `Staff order started from ${activeSession.tableCode}`,
+                              tableSessionId: activeSession.id,
+                            })
+                          }
+                          type="button"
+                        >
+                          {createStaffOrderMutation.isPending ? 'Starting...' : 'Create dine-in order'}
+                        </button>
+                      ) : null}
+                      <button className="button-chip" onClick={() => setOrderSessionFilter(null)} type="button">
+                        Release focus
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+
             {canManageFloor && ordersQuery.isLoading ? <LoadingState label="Loading orders" /> : null}
             {canManageFloor && ordersQuery.error ? <ErrorState error={ordersQuery.error} /> : null}
+            {canManageFloor && staffMenuQuery.isLoading ? <LoadingState label="Loading menu items for POS" /> : null}
+            {canManageFloor && staffMenuQuery.error ? <ErrorState error={staffMenuQuery.error} /> : null}
             {canManageBilling && invoicesQuery.isLoading ? <LoadingState label="Loading invoices" /> : null}
             {canManageBilling && invoicesQuery.error ? <ErrorState error={invoicesQuery.error} /> : null}
             {canManageBilling && paymentsQuery.isLoading ? <LoadingState label="Loading payments" /> : null}
             {canManageBilling && paymentsQuery.error ? <ErrorState error={paymentsQuery.error} /> : null}
-            {(!canManageFloor || ordersQuery.data) && (!canManageBilling || (invoicesQuery.data && paymentsQuery.data)) ? (
+            {createStaffOrderMutation.error ? <div className="mb-4"><InlineError error={createStaffOrderMutation.error} /></div> : null}
+            {(!canManageFloor || (ordersQuery.data && staffMenuQuery.data)) && (!canManageBilling || (invoicesQuery.data && paymentsQuery.data)) ? (
               <CashierWorkbench
                 orders={ordersQuery.data?.content ?? []}
                 invoices={invoicesQuery.data?.content ?? []}
                 payments={paymentsQuery.data?.content ?? []}
-                isBusy={orderActionMutation.isPending || createInvoiceMutation.isPending || recordPaymentMutation.isPending}
-                orderError={orderActionMutation.error}
+                menuItems={staffMenuQuery.data?.items ?? []}
+                isBusy={workbenchBusy}
+                orderError={workbenchOrderError}
                 invoiceError={createInvoiceMutation.error}
                 paymentError={recordPaymentMutation.error}
                 showOrderOperations={canManageFloor}
                 showBillingOperations={canManageBilling}
                 invoicePresenceByOrderId={invoicePresenceByOrderId}
+                onAddOrderItem={(payload) => orderItemMutation.mutate({ kind: 'add', ...payload })}
                 onCancelOrder={(orderId) => orderActionMutation.mutate({ kind: 'cancel', orderId })}
                 onConfirmOrder={(orderId) => orderActionMutation.mutate({ kind: 'confirm', orderId })}
                 onCreateInvoice={(order) => createInvoiceMutation.mutate({ orderId: order.id, orderCode: order.orderCode })}
                 onRecordPayment={(payload) => recordPaymentMutation.mutate(payload)}
+                onUpdateOrderItem={(payload) => orderItemMutation.mutate({ kind: 'update', ...payload })}
               />
             ) : null}
-          </DataPanel>
+            </DataPanel>
+          </div>
         ) : null}
 
         {canManageFloor ? (
-          <DataPanel title="Open table sessions" subtitle="See which tables already have a live session before seating or check-in.">
+          <DataPanel testId="open-table-sessions-panel" title="Open table sessions" subtitle="See which tables already have a live session before seating or check-in.">
             {tableSessionsQuery.isLoading ? <LoadingState label="Loading table sessions" /> : null}
             {tableSessionsQuery.error ? <ErrorState error={tableSessionsQuery.error} /> : null}
             {tableSessionsQuery.data ? <TableSessionList sessions={tableSessionsQuery.data} /> : null}
@@ -1109,6 +1404,16 @@ function ReservationList({
                 <InfoPair label="Area" value={reservation.requestedArea || 'Any available'} />
               </div>
 
+              <div className="rounded-[20px] border border-ink/10 bg-white/70 px-4 py-3 text-sm leading-7 text-slate">
+                {reservation.status === 'PENDING'
+                  ? 'Host action: verify the booking details, then confirm or cancel it.'
+                  : reservation.status === 'CONFIRMED'
+                    ? 'Host action: pick the right table and check the party in when they arrive.'
+                    : reservation.status === 'CHECKED_IN'
+                      ? 'Waiter action: the party is seated; complete the reservation after service handoff is done.'
+                      : 'History only: no further staff action is required.'}
+              </div>
+
               {reservation.note ? <p className="text-sm leading-7 text-slate">Guest note: {reservation.note}</p> : null}
               {reservation.status === 'CONFIRMED' ? (
                 <div className="space-y-2">
@@ -1139,14 +1444,24 @@ function ReservationList({
 
             <div className="flex flex-col gap-3 lg:items-end">
               {reservation.status === 'PENDING' ? (
-                <button
-                  className="button-chip-primary"
-                  disabled={isMutating}
-                  onClick={() => onAction({ reservationId: reservation.id, kind: 'confirm' })}
-                  type="button"
-                >
-                  {isMutating ? 'Saving...' : 'Confirm'}
-                </button>
+                <>
+                  <button
+                    className="button-chip-primary"
+                    disabled={isMutating}
+                    onClick={() => onAction({ reservationId: reservation.id, kind: 'confirm' })}
+                    type="button"
+                  >
+                    {isMutating ? 'Saving...' : 'Confirm booking'}
+                  </button>
+                  <button
+                    className="button-chip"
+                    disabled={isMutating}
+                    onClick={() => onAction({ reservationId: reservation.id, kind: 'cancel', note: 'Cancelled from staff queue' })}
+                    type="button"
+                  >
+                    {isMutating ? 'Saving...' : 'Cancel booking'}
+                  </button>
+                </>
               ) : null}
 
               {reservation.status === 'CONFIRMED' ? (
@@ -1164,7 +1479,15 @@ function ReservationList({
                     title={(tableSelections[reservation.id] ?? '') === '' ? 'Choose a table before check-in' : undefined}
                     type="button"
                   >
-                    {isMutating ? 'Saving...' : 'Check in'}
+                    {isMutating ? 'Saving...' : 'Check in party'}
+                  </button>
+                  <button
+                    className="button-chip"
+                    disabled={isMutating}
+                    onClick={() => onAction({ reservationId: reservation.id, kind: 'cancel', note: 'Cancelled from staff queue' })}
+                    type="button"
+                  >
+                    {isMutating ? 'Saving...' : 'Cancel booking'}
                   </button>
                 </>
               ) : null}
@@ -1176,7 +1499,7 @@ function ReservationList({
                   onClick={() => onAction({ reservationId: reservation.id, kind: 'complete' })}
                   type="button"
                 >
-                  {isMutating ? 'Saving...' : 'Complete'}
+                  {isMutating ? 'Saving...' : 'Complete handoff'}
                 </button>
               ) : null}
 
@@ -1288,9 +1611,9 @@ function ShortcutCard({ title, body, to }: { title: string; body: string; to: st
   );
 }
 
-function DataPanel({ children, subtitle, title }: { children: ReactNode; subtitle: string; title: string }) {
+function DataPanel({ children, subtitle, title, testId }: { children: ReactNode; subtitle: string; title: string; testId?: string }) {
   return (
-    <section className="panel px-5 py-6">
+    <section className="panel px-5 py-6" data-testid={testId}>
       <p className="text-xs font-bold uppercase tracking-[0.24em] text-slate">{title}</p>
       <p className="mt-2 text-sm leading-7 text-slate">{subtitle}</p>
       <div className="mt-5">{children}</div>

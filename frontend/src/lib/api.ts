@@ -80,7 +80,7 @@ export type OrderItem = {
   unitPrice: number;
   lineTotal: number;
   note: string | null;
-  status: string;
+  status: OrderItemStatus;
 };
 
 export type Order = {
@@ -88,9 +88,9 @@ export type Order = {
   orderCode: string;
   tableSessionId: number | null;
   customerId: number | null;
-  orderType: string;
-  sourceChannel: string;
-  status: string;
+  orderType: OrderType;
+  sourceChannel: OrderSourceChannel;
+  status: OrderStatus;
   subtotal: number;
   serviceFee: number;
   vatAmount: number;
@@ -101,8 +101,10 @@ export type Order = {
   items: OrderItem[];
 };
 
+export type OrderItemStatus = 'NEW' | 'CONFIRMED' | 'CANCELLED';
 export type OrderStatus = 'DRAFT' | 'CONFIRMED' | 'COMPLETED' | 'CANCELLED';
 export type OrderSourceChannel = 'STAFF' | 'QR';
+export type OrderType = 'DINE_IN' | 'TAKEAWAY' | 'DELIVERY';
 
 export type Reservation = {
   id: number;
@@ -398,6 +400,45 @@ export const staffApi = {
       },
       token,
     ),
+  createOrder: (
+    token: string,
+    payload: { orderType: OrderType; tableSessionId?: number; customerId?: number; note?: string },
+  ) =>
+    request<Order>(
+      '/api/orders',
+      {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      },
+      token,
+    ),
+  addOrderItem: (
+    token: string,
+    orderId: number,
+    payload: { menuItemId: number; quantity: number; note?: string },
+  ) =>
+    request<Order>(
+      `/api/orders/${orderId}/items`,
+      {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      },
+      token,
+    ),
+  updateOrderItem: (
+    token: string,
+    orderId: number,
+    orderItemId: number,
+    payload: { quantity?: number; note?: string; cancelled?: boolean },
+  ) =>
+    request<Order>(
+      `/api/orders/${orderId}/items/${orderItemId}`,
+      {
+        method: 'PUT',
+        body: JSON.stringify(payload),
+      },
+      token,
+    ),
   createInvoice: (token: string, orderId: number) =>
     request<Invoice>(
       '/api/invoices',
@@ -479,6 +520,23 @@ export const staffApi = {
       {},
       token,
     ),
+  openTableSession: (token: string, diningTableId: number) =>
+    request<TableSession>(
+      '/api/table-sessions',
+      {
+        method: 'POST',
+        body: JSON.stringify({ diningTableId }),
+      },
+      token,
+    ),
+  closeTableSession: (token: string, sessionId: number) =>
+    request<TableSession>(
+      `/api/table-sessions/${sessionId}/close`,
+      {
+        method: 'POST',
+      },
+      token,
+    ),
   confirmReservation: (token: string, reservationId: number, payload?: { internalNote?: string }) =>
     request<Reservation>(
       `/api/reservations/${reservationId}/confirm`,
@@ -494,6 +552,15 @@ export const staffApi = {
       {
         method: 'POST',
         body: JSON.stringify(payload),
+      },
+      token,
+    ),
+  cancelReservation: (token: string, reservationId: number, payload?: { note?: string }) =>
+    request<Reservation>(
+      `/api/reservations/${reservationId}/cancel`,
+      {
+        method: 'POST',
+        body: JSON.stringify(payload ?? {}),
       },
       token,
     ),
