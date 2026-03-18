@@ -51,6 +51,14 @@
     @apply inline-flex items-center gap-2 rounded-full border border-ink/10 bg-white/75 px-5 py-3 text-sm font-semibold text-ink transition hover:-translate-y-0.5 hover:border-forest/25 hover:text-forest;
   }
 
+  .button-chip {
+    @apply inline-flex items-center gap-2 rounded-full border border-ink/10 bg-white/80 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-ink transition hover:-translate-y-0.5 hover:border-forest/25 hover:text-forest disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .button-chip-primary {
+    @apply inline-flex items-center gap-2 rounded-full bg-forest px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-cream transition hover:-translate-y-0.5 hover:bg-ink disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
   .button-ghost-light {
     @apply inline-flex items-center justify-center rounded-full border border-white/20 bg-white/10 px-4 py-3 text-sm font-semibold text-cream transition hover:bg-white/20;
   }

@@ -1,7 +1,7 @@
 import clsx from 'clsx';
 import type { FormEvent, ReactNode } from 'react';
 import { useDeferredValue, useEffect, useState } from 'react';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, Navigate, NavLink, Route, Routes, useNavigate, useParams } from 'react-router-dom';
 import {
   ApiError,
@@ -10,8 +10,15 @@ import {
   staffApi,
   type AuthSession,
   type DashboardData,
+  type DiningTable,
   type MenuItem,
   type PublicMenu,
+  type Reservation,
+  type ReservationStatus,
+  type ServiceRequestType,
+  type TableSession,
+  type ServiceRequest,
+  type ServiceRequestStatus,
 } from './lib/api';
 import { clearSession, msUntilSessionRefresh, readSession, saveSession, shouldRefreshSession } from './lib/session';
 
@@ -437,7 +444,7 @@ function QrExperiencePage() {
   });
 
   const serviceRequestMutation = useMutation({
-    mutationFn: (requestType: string) =>
+    mutationFn: (requestType: ServiceRequestType) =>
       publicApi.requestService(token, {
         orderCode: activeOrderCode || undefined,
         requestType,
@@ -617,6 +624,11 @@ function StaffLoginPage({
   );
 }
 
+type ReservationActionInput =
+  | { reservationId: number; kind: 'confirm'; internalNote?: string }
+  | { reservationId: number; kind: 'check-in'; diningTableId: number; internalNote?: string }
+  | { reservationId: number; kind: 'complete' };
+
 function StaffDashboardPage({
   session,
   onLogout,
@@ -626,43 +638,109 @@ function StaffDashboardPage({
   onLogout: () => void;
   onRefreshSession: (session: AuthSession) => Promise<AuthSession | null>;
 }) {
-  const dashboardQuery = useQuery({
-    queryKey: ['staff-dashboard', session?.accessToken],
-    queryFn: async () => {
-      if (!session) {
-        throw new ApiError('Session expired. Please sign in again.', 401);
-      }
+  const queryClient = useQueryClient();
 
-      try {
-        return await staffApi.dashboard(session.accessToken);
-      } catch (error) {
-        if (error instanceof ApiError && error.status === 401) {
-          const refreshedSession = await onRefreshSession(session);
-          if (!refreshedSession) {
-            onLogout();
-            throw new ApiError('Session expired. Please sign in again.', 401);
-          }
-          return staffApi.dashboard(refreshedSession.accessToken);
+  const runStaffRequest = async <T,>(requestFn: (token: string) => Promise<T>): Promise<T> => {
+    if (!session) {
+      throw new ApiError('Session expired. Please sign in again.', 401);
+    }
+
+    try {
+      return await requestFn(session.accessToken);
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 401) {
+        const refreshedSession = await onRefreshSession(session);
+        if (!refreshedSession) {
+          onLogout();
+          throw new ApiError('Session expired. Please sign in again.', 401);
         }
-        throw error;
+        return requestFn(refreshedSession.accessToken);
       }
-    },
+      throw error;
+    }
+  };
+
+  const dashboardQuery = useQuery({
+    queryKey: ['staff', 'dashboard', session?.accessToken],
+    queryFn: () => runStaffRequest((token) => staffApi.dashboard(token)),
     enabled: Boolean(session?.accessToken),
     retry: false,
   });
+
+  const reservationsQuery = useQuery({
+    queryKey: ['staff', 'reservations', session?.accessToken],
+    queryFn: () => runStaffRequest((token) => staffApi.reservations(token, { size: 20 })),
+    enabled: Boolean(session?.accessToken),
+    retry: false,
+  });
+
+  const serviceRequestsQuery = useQuery({
+    queryKey: ['staff', 'service-requests', session?.accessToken],
+    queryFn: () => runStaffRequest((token) => staffApi.serviceRequests(token, { size: 20, status: 'OPEN' })),
+    enabled: Boolean(session?.accessToken),
+    retry: false,
+  });
+
+  const tablesQuery = useQuery({
+    queryKey: ['staff', 'tables', session?.accessToken],
+    queryFn: () => runStaffRequest((token) => staffApi.tables(token, { size: 50, active: true, status: 'AVAILABLE' })),
+    enabled: Boolean(session?.accessToken),
+    retry: false,
+  });
+
+  const tableSessionsQuery = useQuery({
+    queryKey: ['staff', 'table-sessions', session?.accessToken],
+    queryFn: () => runStaffRequest((token) => staffApi.tableSessions(token, { size: 20, status: 'OPEN' })),
+    enabled: Boolean(session?.accessToken),
+    retry: false,
+  });
+
+  const reservationActionMutation = useMutation({
+    mutationFn: (action: ReservationActionInput) =>
+      runStaffRequest((token) => {
+        switch (action.kind) {
+          case 'confirm':
+            return staffApi.confirmReservation(token, action.reservationId, { internalNote: action.internalNote });
+          case 'check-in':
+            return staffApi.checkInReservation(token, action.reservationId, {
+              diningTableId: action.diningTableId,
+              internalNote: action.internalNote,
+            });
+          case 'complete':
+            return staffApi.completeReservation(token, action.reservationId);
+        }
+      }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['staff'] });
+    },
+  });
+
+  const serviceRequestMutation = useMutation({
+    mutationFn: (requestId: number) => runStaffRequest((token) => staffApi.resolveServiceRequest(token, requestId)),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['staff'] });
+    },
+  });
+
+  const refreshWorkspace = () => {
+    void queryClient.invalidateQueries({ queryKey: ['staff'] });
+  };
 
   return (
     <div className="space-y-8">
       <section className="panel overflow-hidden px-6 py-8 sm:px-8">
         <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.24em] text-slate">Staff dashboard</p>
+            <p className="text-xs font-bold uppercase tracking-[0.24em] text-slate">Staff workspace</p>
             <h1 className="mt-3 font-display text-4xl text-ink">Welcome back, {session?.user.fullName}.</h1>
             <p className="mt-4 max-w-2xl text-base leading-8 text-slate">
-              This view reads straight from the secured staff endpoints so the team can audit operational state without jumping into Swagger.
+              Keep reservations moving, clear service requests, and monitor back-office activity without leaving the floor console.
             </p>
           </div>
           <div className="flex flex-wrap gap-3">
+            <button className="button-secondary" onClick={refreshWorkspace} type="button">
+              Refresh workspace
+            </button>
             <button className="button-secondary" onClick={onLogout} type="button">
               Log out
             </button>
@@ -670,35 +748,66 @@ function StaffDashboardPage({
         </div>
       </section>
 
-      {dashboardQuery.isLoading ? <LoadingState label="Loading dashboard" /> : null}
+      {dashboardQuery.isLoading ? <LoadingState label="Loading dashboard summary" /> : null}
       {dashboardQuery.error ? <ErrorState error={dashboardQuery.error} /> : null}
 
       {dashboardQuery.data ? (
-        <>
-          <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-            <MetricCard label="Orders" value={String(dashboardQuery.data.orders.totalElements)} tone="forest" />
-            <MetricCard label="Reservations" value={String(dashboardQuery.data.reservations.totalElements)} tone="ember" />
-            <MetricCard label="Service requests" value={String(dashboardQuery.data.serviceRequests.totalElements)} tone="slate" />
-            <MetricCard label="Invoices" value={String(dashboardQuery.data.invoices.totalElements)} tone="forest" />
-            <MetricCard label="Payments" value={String(dashboardQuery.data.payments.totalElements)} tone="ember" />
-          </section>
+        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+          <MetricCard label="Orders" value={String(dashboardQuery.data.orders.totalElements)} tone="forest" />
+          <MetricCard label="Reservations" value={String(dashboardQuery.data.reservations.totalElements)} tone="ember" />
+          <MetricCard label="Service requests" value={String(dashboardQuery.data.serviceRequests.totalElements)} tone="slate" />
+          <MetricCard label="Invoices" value={String(dashboardQuery.data.invoices.totalElements)} tone="forest" />
+          <MetricCard label="Payments" value={String(dashboardQuery.data.payments.totalElements)} tone="ember" />
+        </section>
+      ) : null}
 
-          <section className="grid gap-6 xl:grid-cols-2">
-            <DataPanel title="Latest orders" subtitle="Includes the new sourceChannel field for QR visibility.">
+      <section className="grid gap-6 xl:grid-cols-2">
+        <DataPanel title="Reservation queue" subtitle="Confirm, seat, and complete reservations directly from the staff surface.">
+          {reservationsQuery.isLoading ? <LoadingState label="Loading reservations" /> : null}
+          {reservationsQuery.error ? <ErrorState error={reservationsQuery.error} /> : null}
+          {tablesQuery.isLoading ? <LoadingState label="Loading table options" /> : null}
+          {tablesQuery.error ? <ErrorState error={tablesQuery.error} /> : null}
+          {reservationActionMutation.error ? <div className="mt-4"><InlineError error={reservationActionMutation.error} /></div> : null}
+          {reservationsQuery.data ? (
+            <ReservationList
+              availableTables={tablesQuery.data?.content ?? []}
+              isMutating={reservationActionMutation.isPending}
+              onAction={(action) => reservationActionMutation.mutate(action)}
+              reservations={reservationsQuery.data.content}
+            />
+          ) : null}
+        </DataPanel>
+
+        <DataPanel title="Open service requests" subtitle="Resolve waiter calls and bill requests as soon as they land.">
+          {serviceRequestsQuery.isLoading ? <LoadingState label="Loading service requests" /> : null}
+          {serviceRequestsQuery.error ? <ErrorState error={serviceRequestsQuery.error} /> : null}
+          {serviceRequestMutation.error ? <div className="mt-4"><InlineError error={serviceRequestMutation.error} /></div> : null}
+          {serviceRequestsQuery.data ? (
+            <ServiceRequestList
+              isMutating={serviceRequestMutation.isPending}
+              onResolve={(requestId) => serviceRequestMutation.mutate(requestId)}
+              requests={serviceRequestsQuery.data.content}
+            />
+          ) : null}
+        </DataPanel>
+
+        {dashboardQuery.data ? (
+          <>
+            <DataPanel title="Latest orders" subtitle="Includes the source channel field for QR visibility and audit trails.">
               <OrderList orders={dashboardQuery.data.orders.content} />
             </DataPanel>
-            <DataPanel title="Reservations" subtitle="Public booking is now traceable from the same secured API surface.">
-              <ReservationList reservations={dashboardQuery.data.reservations.content} />
-            </DataPanel>
-            <DataPanel title="Open service requests" subtitle="Customer assistance and bill requests land here for the team.">
-              <ServiceRequestList dashboard={dashboardQuery.data} />
-            </DataPanel>
-            <DataPanel title="Cashier activity" subtitle="Invoices and payments use the new list endpoints added for the staff UI.">
+            <DataPanel title="Cashier activity" subtitle="Invoices and payments remain visible for the front-of-house handoff.">
               <BillingList dashboard={dashboardQuery.data} />
             </DataPanel>
-          </section>
-        </>
-      ) : null}
+          </>
+        ) : null}
+
+        <DataPanel title="Open table sessions" subtitle="See which tables already have a live session before seating or check-in.">
+          {tableSessionsQuery.isLoading ? <LoadingState label="Loading table sessions" /> : null}
+          {tableSessionsQuery.error ? <ErrorState error={tableSessionsQuery.error} /> : null}
+          {tableSessionsQuery.data ? <TableSessionList sessions={tableSessionsQuery.data.content} /> : null}
+        </DataPanel>
+      </section>
     </div>
   );
 }
@@ -746,7 +855,37 @@ function OrderList({ orders }: { orders: DashboardData['orders']['content'] }) {
   );
 }
 
-function ReservationList({ reservations }: { reservations: DashboardData['reservations']['content'] }) {
+function ReservationList({
+  availableTables,
+  isMutating,
+  onAction,
+  reservations,
+}: {
+  availableTables: DiningTable[];
+  isMutating: boolean;
+  onAction: (action: ReservationActionInput) => void;
+  reservations: Reservation[];
+}) {
+  const [tableSelections, setTableSelections] = useState<Record<number, string>>({});
+
+  useEffect(() => {
+    setTableSelections((current) => {
+      const next = { ...current };
+
+      reservations.forEach((reservation) => {
+        if (reservation.status === 'CONFIRMED') {
+          if (next[reservation.id] === undefined) {
+            next[reservation.id] = reservation.assignedTableId === null ? '' : String(reservation.assignedTableId);
+          }
+        } else {
+          delete next[reservation.id];
+        }
+      });
+
+      return next;
+    });
+  }, [reservations]);
+
   if (!reservations.length) {
     return <EmptyMessage message="No reservations yet." />;
   }
@@ -754,34 +893,174 @@ function ReservationList({ reservations }: { reservations: DashboardData['reserv
   return (
     <div className="space-y-3">
       {reservations.map((reservation) => (
-        <div key={reservation.id} className="data-row">
-          <div>
-            <p className="font-semibold text-ink">{reservation.customerName}</p>
-            <p className="text-sm text-slate">{reservation.reservationCode} • {formatDateTime(reservation.reservationTime)}</p>
+        <div key={reservation.id} className="rounded-[24px] border border-ink/10 bg-white/75 p-4">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div className="space-y-4">
+              <div className="flex flex-wrap items-start gap-3">
+                <div>
+                  <p className="font-semibold text-ink">{reservation.customerName}</p>
+                  <p className="text-sm text-slate">
+                    {reservation.reservationCode} • {formatDateTime(reservation.reservationTime)}
+                  </p>
+                </div>
+                <StatusPill tone={reservationStatusTone(reservation.status)}>{reservation.status}</StatusPill>
+              </div>
+
+              <div className="grid gap-2 sm:grid-cols-2">
+                <InfoPair label="Party size" value={`${reservation.partySize} guests`} />
+                <InfoPair label="Table" value={reservation.assignedTableName ?? reservation.assignedTableCode ?? 'Unassigned'} />
+                <InfoPair label="Phone" value={reservation.phone} />
+                <InfoPair label="Area" value={reservation.requestedArea || 'Any available'} />
+              </div>
+
+              {reservation.note ? <p className="text-sm leading-7 text-slate">Guest note: {reservation.note}</p> : null}
+              {reservation.status === 'CONFIRMED' ? (
+                <div className="space-y-2">
+                  <label className="block">
+                    <span className="mb-2 block text-xs font-bold uppercase tracking-[0.24em] text-slate">Table for check-in</span>
+                    <select
+                      className="field"
+                      value={tableSelections[reservation.id] ?? ''}
+                      onChange={(event) => setTableSelections((current) => ({ ...current, [reservation.id]: event.target.value }))}
+                    >
+                      <option value="">Choose a table</option>
+                      {reservation.assignedTableId !== null && !availableTables.some((table) => table.id === reservation.assignedTableId) ? (
+                        <option value={String(reservation.assignedTableId)}>
+                          {reservation.assignedTableCode ?? `Table #${reservation.assignedTableId}`} • {reservation.assignedTableName ?? 'Assigned table'}
+                        </option>
+                      ) : null}
+                      {availableTables.map((table) => (
+                        <option key={table.id} value={String(table.id)}>
+                          {formatTableLabel(table)} • {table.areaName} • {table.seatCount} seats
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  {availableTables.length === 0 ? <p className="text-sm leading-7 text-slate">No available tables loaded yet.</p> : null}
+                </div>
+              ) : null}
+            </div>
+
+            <div className="flex flex-col gap-3 lg:items-end">
+              {reservation.status === 'PENDING' ? (
+                <button
+                  className="button-chip-primary"
+                  disabled={isMutating}
+                  onClick={() => onAction({ reservationId: reservation.id, kind: 'confirm' })}
+                  type="button"
+                >
+                  {isMutating ? 'Saving...' : 'Confirm'}
+                </button>
+              ) : null}
+
+              {reservation.status === 'CONFIRMED' ? (
+                <>
+                  <button
+                    className="button-chip-primary"
+                    disabled={isMutating || (tableSelections[reservation.id] ?? '') === ''}
+                    onClick={() =>
+                      onAction({
+                        reservationId: reservation.id,
+                        kind: 'check-in',
+                        diningTableId: Number(tableSelections[reservation.id]),
+                      })
+                    }
+                    title={(tableSelections[reservation.id] ?? '') === '' ? 'Choose a table before check-in' : undefined}
+                    type="button"
+                  >
+                    {isMutating ? 'Saving...' : 'Check in'}
+                  </button>
+                </>
+              ) : null}
+
+              {reservation.status === 'CHECKED_IN' ? (
+                <button
+                  className="button-chip-primary"
+                  disabled={isMutating}
+                  onClick={() => onAction({ reservationId: reservation.id, kind: 'complete' })}
+                  type="button"
+                >
+                  {isMutating ? 'Saving...' : 'Complete'}
+                </button>
+              ) : null}
+
+              {reservation.status === 'CANCELLED' || reservation.status === 'COMPLETED' ? (
+                <span className="text-xs font-bold uppercase tracking-[0.18em] text-slate">No further action</span>
+              ) : null}
+            </div>
           </div>
-          <StatusPill tone={reservation.status === 'CANCELLED' ? 'warm' : reservation.status === 'COMPLETED' ? 'neutral' : 'forest'}>
-            {reservation.status}
-          </StatusPill>
         </div>
       ))}
     </div>
   );
 }
 
-function ServiceRequestList({ dashboard }: { dashboard: DashboardData }) {
-  if (!dashboard.serviceRequests.content.length) {
+function ServiceRequestList({
+  isMutating,
+  onResolve,
+  requests,
+}: {
+  isMutating: boolean;
+  onResolve: (requestId: number) => void;
+  requests: ServiceRequest[];
+}) {
+  if (!requests.length) {
     return <EmptyMessage message="No service requests yet." />;
   }
 
   return (
     <div className="space-y-3">
-      {dashboard.serviceRequests.content.map((request) => (
-        <div key={request.id} className="data-row">
-          <div>
-            <p className="font-semibold text-ink">{request.requestType}</p>
-            <p className="text-sm text-slate">Order #{request.orderId ?? 'n/a'} • Session #{request.tableSessionId ?? 'n/a'}</p>
+      {requests.map((request) => (
+        <div key={request.id} className="rounded-[24px] border border-ink/10 bg-white/75 p-4">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div className="space-y-4">
+              <div className="flex flex-wrap items-start gap-3">
+                <div>
+                  <p className="font-semibold text-ink">{serviceRequestLabel(request.requestType)}</p>
+                  <p className="text-sm text-slate">
+                    Order #{request.orderId ?? 'n/a'} • Session #{request.tableSessionId ?? 'n/a'} • {formatDateTime(request.requestedAt)}
+                  </p>
+                </div>
+                <StatusPill tone={serviceRequestStatusTone(request.status)}>{request.status}</StatusPill>
+              </div>
+
+              {request.note ? <p className="text-sm leading-7 text-slate">{request.note}</p> : null}
+            </div>
+
+            <div className="flex flex-col gap-3 lg:items-end">
+              <button
+                className="button-chip-primary"
+                disabled={isMutating || request.status !== 'OPEN'}
+                onClick={() => onResolve(request.id)}
+                title={request.status !== 'OPEN' ? 'Only open requests can be resolved' : undefined}
+                type="button"
+              >
+                {isMutating ? 'Resolving...' : 'Resolve'}
+              </button>
+            </div>
           </div>
-          <StatusPill tone={request.status === 'RESOLVED' ? 'neutral' : 'ember'}>{request.status}</StatusPill>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function TableSessionList({ sessions }: { sessions: TableSession[] }) {
+  if (!sessions.length) {
+    return <EmptyMessage message="No open table sessions yet." />;
+  }
+
+  return (
+    <div className="space-y-3">
+      {sessions.map((session) => (
+        <div key={session.id} className="data-row">
+          <div>
+            <p className="font-semibold text-ink">{formatTableSessionLabel(session)}</p>
+            <p className="text-sm text-slate">
+              {session.tableCode} • {session.status} • Opened {formatDateTime(session.openedAt)}
+            </p>
+          </div>
+          <StatusPill tone={session.status === 'OPEN' ? 'forest' : 'neutral'}>{session.status}</StatusPill>
         </div>
       ))}
     </div>
@@ -975,6 +1254,52 @@ function formatDateTime(value: string) {
     dateStyle: 'medium',
     timeStyle: 'short',
   }).format(new Date(value));
+}
+
+function reservationStatusTone(status: ReservationStatus) {
+  switch (status) {
+    case 'PENDING':
+      return 'ember';
+    case 'CONFIRMED':
+    case 'CHECKED_IN':
+      return 'forest';
+    case 'COMPLETED':
+      return 'neutral';
+    case 'CANCELLED':
+      return 'warm';
+  }
+}
+
+function serviceRequestStatusTone(status: ServiceRequestStatus) {
+  switch (status) {
+    case 'OPEN':
+      return 'ember';
+    case 'RESOLVED':
+      return 'neutral';
+    case 'CANCELLED':
+      return 'warm';
+  }
+}
+
+function serviceRequestLabel(requestType: ServiceRequest['requestType']) {
+  switch (requestType) {
+    case 'CALL_WAITER':
+      return 'Call waiter';
+    case 'REQUEST_BILL':
+      return 'Request bill';
+    case 'WATER':
+      return 'Water refill';
+    case 'OTHER':
+      return 'Other request';
+  }
+}
+
+function formatTableLabel(table: DiningTable) {
+  return `${table.code} • ${table.name}`;
+}
+
+function formatTableSessionLabel(session: TableSession) {
+  return `${session.sessionCode} • ${session.tableName}`;
 }
 
 function nextReservationSlot() {

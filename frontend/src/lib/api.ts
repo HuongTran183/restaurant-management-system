@@ -51,6 +51,9 @@ export type MenuItem = {
   images: MenuItemImage[];
 };
 
+export type TableStatus = 'AVAILABLE' | 'OCCUPIED' | 'RESERVED' | 'CLEANING' | 'LOCKED';
+export type TableSessionStatus = 'OPEN' | 'CLOSED';
+
 export type PublicMenu = {
   restaurantName: string;
   categories: Category[];
@@ -106,7 +109,7 @@ export type Reservation = {
   email: string | null;
   partySize: number;
   reservationTime: string;
-  status: string;
+  status: ReservationStatus;
   requestedArea: string | null;
   assignedTableId: number | null;
   assignedTableCode: string | null;
@@ -123,9 +126,9 @@ export type ServiceRequest = {
   id: number;
   tableSessionId: number | null;
   orderId: number | null;
-  requestType: string;
+  requestType: ServiceRequestType;
   note: string | null;
-  status: string;
+  status: ServiceRequestStatus;
   requestedAt: string;
   resolvedAt: string | null;
 };
@@ -159,6 +162,49 @@ export type DashboardData = {
   invoices: PageResponse<Invoice>;
   payments: PageResponse<Payment>;
 };
+
+export type ReservationStatus = 'PENDING' | 'CONFIRMED' | 'CHECKED_IN' | 'COMPLETED' | 'CANCELLED';
+export type ServiceRequestStatus = 'OPEN' | 'RESOLVED' | 'CANCELLED';
+export type ServiceRequestType = 'CALL_WAITER' | 'REQUEST_BILL' | 'WATER' | 'OTHER';
+
+export type DiningTable = {
+  id: number;
+  code: string;
+  name: string;
+  seatCount: number;
+  status: TableStatus;
+  active: boolean;
+  areaId: number | null;
+  areaName: string;
+};
+
+export type TableSession = {
+  id: number;
+  sessionCode: string;
+  diningTableId: number;
+  tableCode: string;
+  tableName: string;
+  status: TableSessionStatus;
+  openedAt: string;
+  closedAt: string | null;
+};
+
+type QueryValue = string | number | boolean | null | undefined;
+
+function buildQueryString(params: Record<string, QueryValue>): string {
+  const searchParams = new URLSearchParams();
+
+  Object.entries(params).forEach(([key, value]) => {
+    if (value === null || value === undefined || value === '') {
+      return;
+    }
+
+    searchParams.set(key, String(value));
+  });
+
+  const queryString = searchParams.toString();
+  return queryString.length > 0 ? `?${queryString}` : '';
+}
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080').replace(/\/$/, '');
 
@@ -208,7 +254,7 @@ export const publicApi = {
       body: JSON.stringify(payload),
     }),
   getOrder: (orderCode: string) => request<Order>(`/api/public/orders/${orderCode}`),
-  requestService: (token: string, payload: { orderCode?: string; requestType: string; note?: string }) =>
+  requestService: (token: string, payload: { orderCode?: string; requestType: ServiceRequestType; note?: string }) =>
     request<ServiceRequest>(`/api/public/qr/${token}/service-requests`, {
       method: 'POST',
       body: JSON.stringify(payload),
@@ -260,6 +306,100 @@ export const staffApi = {
 
     return { orders, reservations, serviceRequests, invoices, payments };
   },
+  reservations: (
+    token: string,
+    params: { page?: number; size?: number; status?: ReservationStatus; query?: string } = {},
+  ) =>
+    request<PageResponse<Reservation>>(
+      `/api/reservations${buildQueryString({
+        page: params.page ?? 0,
+        size: params.size ?? 20,
+        status: params.status,
+        query: params.query,
+      })}`,
+      {},
+      token,
+    ),
+  serviceRequests: (
+    token: string,
+    params: { page?: number; size?: number; status?: ServiceRequestStatus; requestType?: ServiceRequestType; query?: string } = {},
+  ) =>
+    request<PageResponse<ServiceRequest>>(
+      `/api/service-requests${buildQueryString({
+        page: params.page ?? 0,
+        size: params.size ?? 20,
+        status: params.status,
+        requestType: params.requestType,
+        query: params.query,
+      })}`,
+      {},
+      token,
+    ),
+  tables: (
+    token: string,
+    params: { page?: number; size?: number; areaId?: number; status?: TableStatus; active?: boolean; query?: string } = {},
+  ) =>
+    request<PageResponse<DiningTable>>(
+      `/api/tables${buildQueryString({
+        page: params.page ?? 0,
+        size: params.size ?? 20,
+        areaId: params.areaId,
+        status: params.status,
+        active: params.active,
+        query: params.query,
+      })}`,
+      {},
+      token,
+    ),
+  tableSessions: (
+    token: string,
+    params: { page?: number; size?: number; status?: TableSessionStatus; diningTableId?: number; query?: string } = {},
+  ) =>
+    request<PageResponse<TableSession>>(
+      `/api/table-sessions${buildQueryString({
+        page: params.page ?? 0,
+        size: params.size ?? 20,
+        status: params.status,
+        diningTableId: params.diningTableId,
+        query: params.query,
+      })}`,
+      {},
+      token,
+    ),
+  confirmReservation: (token: string, reservationId: number, payload?: { internalNote?: string }) =>
+    request<Reservation>(
+      `/api/reservations/${reservationId}/confirm`,
+      {
+        method: 'POST',
+        body: JSON.stringify(payload ?? {}),
+      },
+      token,
+    ),
+  checkInReservation: (token: string, reservationId: number, payload: { diningTableId: number; internalNote?: string }) =>
+    request<Reservation>(
+      `/api/reservations/${reservationId}/check-in`,
+      {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      },
+      token,
+    ),
+  completeReservation: (token: string, reservationId: number) =>
+    request<Reservation>(
+      `/api/reservations/${reservationId}/complete`,
+      {
+        method: 'POST',
+      },
+      token,
+    ),
+  resolveServiceRequest: (token: string, requestId: number) =>
+    request<ServiceRequest>(
+      `/api/service-requests/${requestId}/resolve`,
+      {
+        method: 'POST',
+      },
+      token,
+    ),
 };
 
 export { ApiError };
