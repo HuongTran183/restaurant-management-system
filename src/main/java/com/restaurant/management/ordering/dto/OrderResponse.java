@@ -1,5 +1,6 @@
 package com.restaurant.management.ordering.dto;
 
+import com.restaurant.management.ordering.domain.OrderSourceChannel;
 import com.restaurant.management.ordering.domain.OrderStatus;
 import com.restaurant.management.ordering.domain.OrderType;
 import java.math.BigDecimal;
@@ -11,6 +12,7 @@ public record OrderResponse(
         Long tableSessionId,
         Long customerId,
         OrderType orderType,
+        OrderSourceChannel sourceChannel,
         OrderStatus status,
         BigDecimal subtotal,
         BigDecimal serviceFee,
@@ -22,3 +24,4 @@ public record OrderResponse(
         List<OrderItemResponse> items
 ) {
 }
+

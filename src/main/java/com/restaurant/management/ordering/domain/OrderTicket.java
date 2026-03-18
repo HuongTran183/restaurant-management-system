@@ -34,6 +34,10 @@ public class OrderTicket extends AuditableEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 32)
+    private OrderSourceChannel sourceChannel = OrderSourceChannel.STAFF;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 32)
     private OrderStatus status = OrderStatus.DRAFT;
 
     @Column(length = 500)
@@ -87,6 +91,14 @@ public class OrderTicket extends AuditableEntity {
 
     public void setOrderType(OrderType orderType) {
         this.orderType = orderType;
+    }
+
+    public OrderSourceChannel getSourceChannel() {
+        return sourceChannel;
+    }
+
+    public void setSourceChannel(OrderSourceChannel sourceChannel) {
+        this.sourceChannel = sourceChannel;
     }
 
     public OrderStatus getStatus() {
@@ -153,3 +165,4 @@ public class OrderTicket extends AuditableEntity {
         this.paymentRequested = paymentRequested;
     }
 }
+

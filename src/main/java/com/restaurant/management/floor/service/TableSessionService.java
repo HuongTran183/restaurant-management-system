@@ -17,6 +17,7 @@ import java.security.SecureRandom;
 import java.time.Instant;
 import java.util.Base64;
 import java.util.List;
+import java.util.Optional;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -48,23 +49,7 @@ public class TableSessionService {
 
     @Transactional
     public TableSessionResponse open(OpenTableSessionRequest request) {
-        DiningTable diningTable = diningTableService.findTable(request.diningTableId());
-        tableSessionRepository.findFirstByDiningTableIdAndStatusOrderByOpenedAtDesc(diningTable.getId(), TableSessionStatus.OPEN)
-                .ifPresent(existing -> {
-                    throw new BusinessConflictException("There is already an open session for table: " + diningTable.getCode());
-                });
-
-        if (diningTable.getStatus() == TableStatus.CLEANING || diningTable.getStatus() == TableStatus.LOCKED) {
-            throw new BusinessConflictException("Table is not available for service: " + diningTable.getCode());
-        }
-
-        diningTable.setStatus(TableStatus.OCCUPIED);
-        TableSession tableSession = new TableSession();
-        tableSession.setDiningTable(diningTable);
-        tableSession.setSessionCode(nextSessionCode());
-        tableSession.setStatus(TableSessionStatus.OPEN);
-        tableSession.setOpenedAt(Instant.now());
-        return toResponse(tableSessionRepository.save(tableSession));
+        return toResponse(openInternal(diningTableService.findTable(request.diningTableId())));
     }
 
     @Transactional
@@ -91,12 +76,45 @@ public class TableSessionService {
         return toResponse(tableSession);
     }
 
+    @Transactional(readOnly = true)
+    public Optional<TableSession> findOpenSessionByTableId(Long diningTableId) {
+        return tableSessionRepository.findFirstByDiningTableIdAndStatusOrderByOpenedAtDesc(diningTableId, TableSessionStatus.OPEN);
+    }
+
+    @Transactional
+    public TableSession findOrOpenSessionByTableId(Long diningTableId) {
+        return findOpenSessionByTableId(diningTableId)
+                .orElseGet(() -> openInternal(diningTableService.findTable(diningTableId)));
+    }
+
     public TableSession findOpenSession(Long sessionId) {
         TableSession tableSession = findSession(sessionId);
         if (tableSession.getStatus() != TableSessionStatus.OPEN) {
             throw new BusinessConflictException("Table session is not open: " + tableSession.getSessionCode());
         }
         return tableSession;
+    }
+
+    private TableSession openInternal(DiningTable diningTable) {
+        tableSessionRepository.findFirstByDiningTableIdAndStatusOrderByOpenedAtDesc(diningTable.getId(), TableSessionStatus.OPEN)
+                .ifPresent(existing -> {
+                    throw new BusinessConflictException("There is already an open session for table: " + diningTable.getCode());
+                });
+
+        if (!diningTable.isActive()) {
+            throw new BusinessConflictException("Table is inactive: " + diningTable.getCode());
+        }
+        if (diningTable.getStatus() == TableStatus.CLEANING || diningTable.getStatus() == TableStatus.LOCKED) {
+            throw new BusinessConflictException("Table is not available for service: " + diningTable.getCode());
+        }
+
+        diningTable.setStatus(TableStatus.OCCUPIED);
+        TableSession tableSession = new TableSession();
+        tableSession.setDiningTable(diningTable);
+        tableSession.setSessionCode(nextSessionCode());
+        tableSession.setStatus(TableSessionStatus.OPEN);
+        tableSession.setOpenedAt(Instant.now());
+        return tableSessionRepository.save(tableSession);
     }
 
     private TableSession findSession(Long sessionId) {
@@ -123,3 +141,4 @@ public class TableSessionService {
         return "TS-" + Base64.getUrlEncoder().withoutPadding().encodeToString(buffer).toUpperCase();
     }
 }
+

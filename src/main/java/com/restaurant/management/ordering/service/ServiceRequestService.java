@@ -8,11 +8,13 @@ import com.restaurant.management.floor.service.TableSessionService;
 import com.restaurant.management.ordering.domain.OrderTicket;
 import com.restaurant.management.ordering.domain.ServiceRequest;
 import com.restaurant.management.ordering.domain.ServiceRequestStatus;
+import com.restaurant.management.ordering.domain.ServiceRequestType;
 import com.restaurant.management.ordering.dto.CreateServiceRequestRequest;
 import com.restaurant.management.ordering.dto.ServiceRequestResponse;
 import com.restaurant.management.ordering.repository.ServiceRequestRepository;
 import java.time.Instant;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,38 +36,71 @@ public class ServiceRequestService {
     }
 
     @Transactional(readOnly = true)
-    public PageResponse<ServiceRequestResponse> listOpen(PageRequest pageRequest) {
-        return PageResponse.from(serviceRequestRepository
-                .findAllByStatusOrderByRequestedAtAsc(ServiceRequestStatus.OPEN, pageRequest)
-                .map(this::toResponse));
+    public PageResponse<ServiceRequestResponse> list(
+            PageRequest pageRequest,
+            ServiceRequestStatus status,
+            ServiceRequestType requestType,
+            String query
+    ) {
+        Specification<ServiceRequest> specification = (root, criteriaQuery, criteriaBuilder) -> criteriaBuilder.conjunction();
+        if (status != null) {
+            specification = specification.and((root, criteriaQuery, criteriaBuilder) ->
+                    criteriaBuilder.equal(root.get("status"), status));
+        }
+        if (requestType != null) {
+            specification = specification.and((root, criteriaQuery, criteriaBuilder) ->
+                    criteriaBuilder.equal(root.get("requestType"), requestType));
+        }
+        if (hasText(query)) {
+            String normalized = like(query);
+            specification = specification.and((root, criteriaQuery, criteriaBuilder) -> criteriaBuilder.or(
+                    criteriaBuilder.like(criteriaBuilder.lower(root.get("note")), normalized),
+                    criteriaBuilder.like(criteriaBuilder.lower(root.get("requestType").as(String.class)), normalized)
+            ));
+        }
+        return PageResponse.from(serviceRequestRepository.findAll(specification, pageRequest).map(this::toResponse));
     }
 
     @Transactional
     public ServiceRequestResponse create(CreateServiceRequestRequest request) {
-        if (request.tableSessionId() == null && request.orderId() == null) {
+        return createForSession(request.tableSessionId(), request.orderId(), request.requestType(), request.note());
+    }
+
+    @Transactional
+    public ServiceRequestResponse createForSession(
+            Long tableSessionId,
+            Long orderId,
+            ServiceRequestType requestType,
+            String note
+    ) {
+        if (tableSessionId == null && orderId == null) {
             throw new BusinessConflictException("A service request must be linked to a table session or an order");
         }
 
-        TableSession tableSession = request.tableSessionId() == null
+        TableSession tableSession = tableSessionId == null
                 ? null
-                : tableSessionService.findOpenSession(request.tableSessionId());
-        OrderTicket order = request.orderId() == null
+                : tableSessionService.findOpenSession(tableSessionId);
+        OrderTicket order = orderId == null
                 ? null
-                : orderWorkflowService.findOrder(request.orderId());
+                : orderWorkflowService.findOrder(orderId);
 
         if (tableSession == null && order != null && order.getTableSession() != null) {
             tableSession = order.getTableSession();
         }
+        if (tableSession != null && order != null && order.getTableSession() != null
+                && !order.getTableSession().getId().equals(tableSession.getId())) {
+            throw new BusinessConflictException("Order does not belong to the provided table session");
+        }
 
-        if (request.requestType().name().equals("REQUEST_BILL") && order != null) {
+        if (requestType == ServiceRequestType.REQUEST_BILL && order != null) {
             order.setPaymentRequested(true);
         }
 
         ServiceRequest serviceRequest = new ServiceRequest();
         serviceRequest.setTableSession(tableSession);
         serviceRequest.setOrder(order);
-        serviceRequest.setRequestType(request.requestType());
-        serviceRequest.setNote(request.note());
+        serviceRequest.setRequestType(requestType);
+        serviceRequest.setNote(note);
         serviceRequest.setStatus(ServiceRequestStatus.OPEN);
         serviceRequest.setRequestedAt(Instant.now());
         return toResponse(serviceRequestRepository.save(serviceRequest));
@@ -80,7 +115,7 @@ public class ServiceRequestService {
 
         serviceRequest.setStatus(ServiceRequestStatus.RESOLVED);
         serviceRequest.setResolvedAt(Instant.now());
-        if (serviceRequest.getRequestType().name().equals("REQUEST_BILL") && serviceRequest.getOrder() != null) {
+        if (serviceRequest.getRequestType() == ServiceRequestType.REQUEST_BILL && serviceRequest.getOrder() != null) {
             serviceRequest.getOrder().setPaymentRequested(false);
         }
         return toResponse(serviceRequest);
@@ -102,5 +137,13 @@ public class ServiceRequestService {
                 serviceRequest.getRequestedAt(),
                 serviceRequest.getResolvedAt()
         );
+    }
+
+    private boolean hasText(String value) {
+        return value != null && !value.isBlank();
+    }
+
+    private String like(String value) {
+        return "%" + value.trim().toLowerCase() + "%";
     }
 }

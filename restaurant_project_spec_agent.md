@@ -760,6 +760,7 @@ Dưới đây là danh sách entity cốt lõi nên có. Với dự án nhỏ, k
 ## 10.1. Backend bắt buộc
 ### Ngôn ngữ / Framework
 - **Java 17 hoặc Java 21**
+- Với repo hiện tại, nên chốt **Java 21 LTS** để đồng bộ môi trường build và tránh lỗi biên dịch do đặt target cao hơn JDK đang cài.
 - **Spring Boot 3.x**
 
 ### Các thành phần nên dùng

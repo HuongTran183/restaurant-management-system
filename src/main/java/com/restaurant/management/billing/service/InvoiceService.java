@@ -12,6 +12,7 @@ import com.restaurant.management.billing.repository.InvoiceRepository;
 import com.restaurant.management.billing.repository.PaymentRepository;
 import com.restaurant.management.common.error.BusinessConflictException;
 import com.restaurant.management.common.error.ResourceNotFoundException;
+import com.restaurant.management.common.web.PageResponse;
 import com.restaurant.management.ordering.domain.OrderItem;
 import com.restaurant.management.ordering.domain.OrderStatus;
 import com.restaurant.management.ordering.domain.OrderTicket;
@@ -22,6 +23,8 @@ import java.security.SecureRandom;
 import java.time.Instant;
 import java.util.Base64;
 import java.util.List;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -47,6 +50,23 @@ public class InvoiceService {
         this.paymentRepository = paymentRepository;
         this.orderRepository = orderRepository;
         this.orderItemRepository = orderItemRepository;
+    }
+
+    @Transactional(readOnly = true)
+    public PageResponse<InvoiceResponse> list(PageRequest pageRequest, InvoiceStatus status, String query) {
+        Specification<Invoice> specification = (root, criteriaQuery, criteriaBuilder) -> criteriaBuilder.conjunction();
+        if (status != null) {
+            specification = specification.and((root, criteriaQuery, criteriaBuilder) ->
+                    criteriaBuilder.equal(root.get("status"), status));
+        }
+        if (hasText(query)) {
+            String normalized = like(query);
+            specification = specification.and((root, criteriaQuery, criteriaBuilder) -> criteriaBuilder.or(
+                    criteriaBuilder.like(criteriaBuilder.lower(root.get("invoiceNumber")), normalized),
+                    criteriaBuilder.like(criteriaBuilder.lower(root.get("order").get("orderCode")), normalized)
+            ));
+        }
+        return PageResponse.from(invoiceRepository.findAll(specification, pageRequest).map(this::toSummaryResponse));
     }
 
     @Transactional(readOnly = true)
@@ -145,9 +165,37 @@ public class InvoiceService {
         );
     }
 
+    private InvoiceResponse toSummaryResponse(Invoice invoice) {
+        return new InvoiceResponse(
+                invoice.getId(),
+                invoice.getInvoiceNumber(),
+                invoice.getOrder().getId(),
+                invoice.getStatus(),
+                invoice.getSubtotal(),
+                invoice.getServiceFee(),
+                invoice.getVatAmount(),
+                invoice.getDiscountAmount(),
+                invoice.getTotalAmount(),
+                invoice.getPaidAmount(),
+                invoice.getIssuedAt(),
+                invoice.getClosedAt(),
+                List.of(),
+                List.of()
+        );
+    }
+
+    private boolean hasText(String value) {
+        return value != null && !value.isBlank();
+    }
+
+    private String like(String value) {
+        return "%" + value.trim().toLowerCase() + "%";
+    }
+
     private String nextInvoiceNumber() {
         byte[] buffer = new byte[6];
         secureRandom.nextBytes(buffer);
         return "INV-" + Base64.getUrlEncoder().withoutPadding().encodeToString(buffer).toUpperCase();
     }
 }
+

@@ -10,11 +10,19 @@ public class RestaurantSettingsService {
 
     private static final BigDecimal DEFAULT_VAT_RATE = new BigDecimal("0.10");
     private static final BigDecimal DEFAULT_SERVICE_FEE_RATE = new BigDecimal("0.05");
+    private static final String DEFAULT_RESTAURANT_NAME = "Demo Restaurant";
 
     private final SettingRepository settingRepository;
 
     public RestaurantSettingsService(SettingRepository settingRepository) {
         this.settingRepository = settingRepository;
+    }
+
+    public String getRestaurantName() {
+        return settingRepository.findBySettingKey("restaurant.name")
+                .map(Setting::getSettingValue)
+                .filter(value -> !value.isBlank())
+                .orElse(DEFAULT_RESTAURANT_NAME);
     }
 
     public PricingRates getPricingRates() {

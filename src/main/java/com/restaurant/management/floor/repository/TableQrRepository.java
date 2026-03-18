@@ -7,4 +7,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface TableQrRepository extends JpaRepository<TableQr, Long> {
 
     Optional<TableQr> findByDiningTableId(Long diningTableId);
+
+    Optional<TableQr> findByToken(String token);
 }

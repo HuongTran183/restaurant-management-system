@@ -5,13 +5,15 @@ import com.restaurant.management.catalog.domain.MenuItemImage;
 import com.restaurant.management.catalog.dto.MenuItemImageResponse;
 import com.restaurant.management.catalog.dto.MenuItemRequest;
 import com.restaurant.management.catalog.dto.MenuItemResponse;
-import com.restaurant.management.catalog.repository.MenuItemImageRepository;
-import com.restaurant.management.catalog.repository.MenuItemRepository;
 import com.restaurant.management.common.error.BusinessConflictException;
 import com.restaurant.management.common.error.ResourceNotFoundException;
+import com.restaurant.management.common.settings.RestaurantSettingsService;
 import com.restaurant.management.common.storage.LocalFileStorage;
 import com.restaurant.management.common.storage.StoredObject;
 import com.restaurant.management.common.web.PageResponse;
+import com.restaurant.management.catalog.repository.MenuItemImageRepository;
+import com.restaurant.management.catalog.repository.MenuItemRepository;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -29,17 +31,20 @@ public class MenuItemService {
     private final MenuItemImageRepository menuItemImageRepository;
     private final CategoryService categoryService;
     private final LocalFileStorage localFileStorage;
+    private final RestaurantSettingsService restaurantSettingsService;
 
     public MenuItemService(
             MenuItemRepository menuItemRepository,
             MenuItemImageRepository menuItemImageRepository,
             CategoryService categoryService,
-            LocalFileStorage localFileStorage
+            LocalFileStorage localFileStorage,
+            RestaurantSettingsService restaurantSettingsService
     ) {
         this.menuItemRepository = menuItemRepository;
         this.menuItemImageRepository = menuItemImageRepository;
         this.categoryService = categoryService;
         this.localFileStorage = localFileStorage;
+        this.restaurantSettingsService = restaurantSettingsService;
     }
 
     @Transactional(readOnly = true)
@@ -58,6 +63,24 @@ public class MenuItemService {
                 page.getTotalElements(),
                 page.getTotalPages()
         );
+    }
+
+    @Transactional(readOnly = true)
+    public List<MenuItemResponse> listActive() {
+        List<MenuItem> items = menuItemRepository.findAll().stream()
+                .filter(menuItem -> menuItem.isActive() && menuItem.isAvailable() && menuItem.getCategory().isActive())
+                .sorted(Comparator.comparing((MenuItem item) -> item.getCategory().getSortOrder()).thenComparing(MenuItem::getName))
+                .toList();
+        Map<Long, List<MenuItemImageResponse>> imagesByMenuItemId = loadImagesByMenuItemIds(
+                items.stream().map(MenuItem::getId).toList()
+        );
+        return items.stream()
+                .map(menuItem -> toResponse(menuItem, imagesByMenuItemId.getOrDefault(menuItem.getId(), List.of())))
+                .toList();
+    }
+
+    public String getRestaurantName() {
+        return restaurantSettingsService.getRestaurantName();
     }
 
     @Transactional(readOnly = true)

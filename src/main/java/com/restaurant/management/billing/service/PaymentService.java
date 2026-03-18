@@ -1,7 +1,9 @@
 package com.restaurant.management.billing.service;
 
 import com.restaurant.management.billing.domain.Invoice;
+import com.restaurant.management.billing.domain.InvoiceStatus;
 import com.restaurant.management.billing.domain.Payment;
+import com.restaurant.management.billing.domain.PaymentMethod;
 import com.restaurant.management.billing.domain.PaymentStatus;
 import com.restaurant.management.billing.dto.PaymentRequest;
 import com.restaurant.management.billing.dto.PaymentResponse;
@@ -9,12 +11,15 @@ import com.restaurant.management.billing.repository.InvoiceRepository;
 import com.restaurant.management.billing.repository.PaymentRepository;
 import com.restaurant.management.common.error.BusinessConflictException;
 import com.restaurant.management.common.error.ResourceNotFoundException;
+import com.restaurant.management.common.web.PageResponse;
 import com.restaurant.management.ordering.service.OrderWorkflowService;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.security.SecureRandom;
 import java.time.Instant;
 import java.util.Base64;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,6 +39,28 @@ public class PaymentService {
         this.invoiceRepository = invoiceRepository;
         this.paymentRepository = paymentRepository;
         this.orderWorkflowService = orderWorkflowService;
+    }
+
+    @Transactional(readOnly = true)
+    public PageResponse<PaymentResponse> list(PageRequest pageRequest, Long invoiceId, PaymentMethod method, String query) {
+        Specification<Payment> specification = (root, criteriaQuery, criteriaBuilder) -> criteriaBuilder.conjunction();
+        if (invoiceId != null) {
+            specification = specification.and((root, criteriaQuery, criteriaBuilder) ->
+                    criteriaBuilder.equal(root.get("invoice").get("id"), invoiceId));
+        }
+        if (method != null) {
+            specification = specification.and((root, criteriaQuery, criteriaBuilder) ->
+                    criteriaBuilder.equal(root.get("method"), method));
+        }
+        if (hasText(query)) {
+            String normalized = like(query);
+            specification = specification.and((root, criteriaQuery, criteriaBuilder) -> criteriaBuilder.or(
+                    criteriaBuilder.like(criteriaBuilder.lower(root.get("paymentCode")), normalized),
+                    criteriaBuilder.like(criteriaBuilder.lower(root.get("note")), normalized),
+                    criteriaBuilder.like(criteriaBuilder.lower(root.get("invoice").get("invoiceNumber")), normalized)
+            ));
+        }
+        return PageResponse.from(paymentRepository.findAll(specification, pageRequest).map(this::toResponse));
     }
 
     @Transactional
@@ -62,21 +89,33 @@ public class PaymentService {
 
         invoice.setPaidAmount(newPaidAmount);
         if (newPaidAmount.compareTo(invoice.getTotalAmount()) == 0) {
-            invoice.setStatus(com.restaurant.management.billing.domain.InvoiceStatus.PAID);
+            invoice.setStatus(InvoiceStatus.PAID);
             invoice.setClosedAt(Instant.now());
             orderWorkflowService.completeAfterPayment(invoice.getOrder().getId());
         }
 
+        return toResponse(savedPayment);
+    }
+
+    private PaymentResponse toResponse(Payment payment) {
         return new PaymentResponse(
-                savedPayment.getId(),
-                savedPayment.getPaymentCode(),
-                invoice.getId(),
-                savedPayment.getMethod(),
-                savedPayment.getStatus(),
-                savedPayment.getAmount(),
-                savedPayment.getPaidAt(),
-                savedPayment.getNote()
+                payment.getId(),
+                payment.getPaymentCode(),
+                payment.getInvoice().getId(),
+                payment.getMethod(),
+                payment.getStatus(),
+                payment.getAmount(),
+                payment.getPaidAt(),
+                payment.getNote()
         );
+    }
+
+    private boolean hasText(String value) {
+        return value != null && !value.isBlank();
+    }
+
+    private String like(String value) {
+        return "%" + value.trim().toLowerCase() + "%";
     }
 
     private String nextPaymentCode() {

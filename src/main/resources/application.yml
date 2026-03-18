@@ -52,4 +52,5 @@ app:
   storage:
     root: ${APP_STORAGE_ROOT:./data/storage}
   qr:
-    public-base-url: ${APP_QR_PUBLIC_BASE_URL:http://localhost:8080/api/public/qr}
+    public-base-url: ${APP_QR_PUBLIC_BASE_URL:http://localhost:5173/qr}
+

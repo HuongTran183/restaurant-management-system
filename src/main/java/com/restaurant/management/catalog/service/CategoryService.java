@@ -7,6 +7,8 @@ import com.restaurant.management.catalog.repository.CategoryRepository;
 import com.restaurant.management.common.error.BusinessConflictException;
 import com.restaurant.management.common.error.ResourceNotFoundException;
 import com.restaurant.management.common.web.PageResponse;
+import java.util.Comparator;
+import java.util.List;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,6 +24,14 @@ public class CategoryService {
 
     public PageResponse<CategoryResponse> list(PageRequest pageRequest) {
         return PageResponse.from(categoryRepository.findAll(pageRequest).map(this::toResponse));
+    }
+
+    public List<CategoryResponse> listActive() {
+        return categoryRepository.findAll().stream()
+                .filter(Category::isActive)
+                .sorted(Comparator.comparingInt(Category::getSortOrder).thenComparing(Category::getName))
+                .map(this::toResponse)
+                .toList();
     }
 
     public CategoryResponse get(Long categoryId) {
