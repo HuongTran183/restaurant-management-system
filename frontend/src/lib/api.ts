@@ -301,14 +301,37 @@ export const authApi = {
   me: (token: string) => request<UserProfile>('/api/auth/me', {}, token),
 };
 
+function emptyPageResponse<T>(): PageResponse<T> {
+  return {
+    content: [],
+    page: 0,
+    size: 0,
+    totalElements: 0,
+    totalPages: 0,
+  };
+}
+
 export const staffApi = {
-  dashboard: async (token: string): Promise<DashboardData> => {
+  dashboard: async (
+    token: string,
+    capabilities: { canManageFloor: boolean; canManageBilling: boolean },
+  ): Promise<DashboardData> => {
     const [orders, reservations, serviceRequests, invoices, payments] = await Promise.all([
-      request<PageResponse<Order>>('/api/orders?size=6', {}, token),
-      request<PageResponse<Reservation>>('/api/reservations?size=6', {}, token),
-      request<PageResponse<ServiceRequest>>('/api/service-requests?size=6', {}, token),
-      request<PageResponse<Invoice>>('/api/invoices?size=6', {}, token),
-      request<PageResponse<Payment>>('/api/payments?size=6', {}, token),
+      capabilities.canManageFloor
+        ? request<PageResponse<Order>>('/api/orders?size=6', {}, token)
+        : Promise.resolve(emptyPageResponse<Order>()),
+      capabilities.canManageFloor
+        ? request<PageResponse<Reservation>>('/api/reservations?size=6', {}, token)
+        : Promise.resolve(emptyPageResponse<Reservation>()),
+      capabilities.canManageFloor
+        ? request<PageResponse<ServiceRequest>>('/api/service-requests?size=6', {}, token)
+        : Promise.resolve(emptyPageResponse<ServiceRequest>()),
+      capabilities.canManageBilling
+        ? request<PageResponse<Invoice>>('/api/invoices?size=6', {}, token)
+        : Promise.resolve(emptyPageResponse<Invoice>()),
+      capabilities.canManageBilling
+        ? request<PageResponse<Payment>>('/api/payments?size=6', {}, token)
+        : Promise.resolve(emptyPageResponse<Payment>()),
     ]);
 
     return { orders, reservations, serviceRequests, invoices, payments };
@@ -331,13 +354,14 @@ export const staffApi = {
     ),
   invoices: (
     token: string,
-    params: { page?: number; size?: number; status?: InvoiceStatus; query?: string } = {},
+    params: { page?: number; size?: number; status?: InvoiceStatus; orderId?: number; query?: string } = {},
   ) =>
     request<PageResponse<Invoice>>(
       `/api/invoices${buildQueryString({
         page: params.page ?? 0,
         size: params.size ?? 20,
         status: params.status,
+        orderId: params.orderId,
         query: params.query,
       })}`,
       {},

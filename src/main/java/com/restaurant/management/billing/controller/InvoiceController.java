@@ -33,11 +33,13 @@ public class InvoiceController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(required = false) InvoiceStatus status,
+            @RequestParam(required = false) Long orderId,
             @RequestParam(required = false) String query
     ) {
         return invoiceService.list(
                 PageRequest.of(page, size, Sort.by("issuedAt").descending()),
                 status,
+                orderId,
                 query
         );
     }

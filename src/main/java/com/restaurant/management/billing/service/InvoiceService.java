@@ -53,11 +53,15 @@ public class InvoiceService {
     }
 
     @Transactional(readOnly = true)
-    public PageResponse<InvoiceResponse> list(PageRequest pageRequest, InvoiceStatus status, String query) {
+    public PageResponse<InvoiceResponse> list(PageRequest pageRequest, InvoiceStatus status, Long orderId, String query) {
         Specification<Invoice> specification = (root, criteriaQuery, criteriaBuilder) -> criteriaBuilder.conjunction();
         if (status != null) {
             specification = specification.and((root, criteriaQuery, criteriaBuilder) ->
                     criteriaBuilder.equal(root.get("status"), status));
+        }
+        if (orderId != null) {
+            specification = specification.and((root, criteriaQuery, criteriaBuilder) ->
+                    criteriaBuilder.equal(root.get("order").get("id"), orderId));
         }
         if (hasText(query)) {
             String normalized = like(query);
@@ -198,4 +202,3 @@ public class InvoiceService {
         return "INV-" + Base64.getUrlEncoder().withoutPadding().encodeToString(buffer).toUpperCase();
     }
 }
-

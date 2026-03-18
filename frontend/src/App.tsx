@@ -634,6 +634,8 @@ type OrderActionInput = { orderId: number; kind: 'confirm' | 'cancel' };
 
 type PaymentInput = { invoiceId: number; amount: number; method: PaymentMethod; note?: string };
 
+type InvoiceCreationInput = { orderId: number; orderCode: string };
+
 function StaffDashboardPage({
   session,
   onLogout,
@@ -644,6 +646,9 @@ function StaffDashboardPage({
   onRefreshSession: (session: AuthSession) => Promise<AuthSession | null>;
 }) {
   const queryClient = useQueryClient();
+  const userRoles = session?.user.roles ?? [];
+  const canManageFloor = userRoles.some((role) => role === 'ADMIN' || role === 'MANAGER' || role === 'WAITER');
+  const canManageBilling = userRoles.some((role) => role === 'ADMIN' || role === 'MANAGER' || role === 'CASHIER');
 
   const runStaffRequest = async <T,>(requestFn: (token: string) => Promise<T>): Promise<T> => {
     if (!session) {
@@ -666,60 +671,121 @@ function StaffDashboardPage({
   };
 
   const dashboardQuery = useQuery({
-    queryKey: ['staff', 'dashboard', session?.accessToken],
-    queryFn: () => runStaffRequest((token) => staffApi.dashboard(token)),
-    enabled: Boolean(session?.accessToken),
+    queryKey: ['staff', 'dashboard', session?.accessToken, canManageFloor, canManageBilling],
+    queryFn: () => runStaffRequest((token) => staffApi.dashboard(token, { canManageFloor, canManageBilling })),
+    enabled: Boolean(session?.accessToken) && (canManageFloor || canManageBilling),
     retry: false,
   });
 
   const reservationsQuery = useQuery({
     queryKey: ['staff', 'reservations', session?.accessToken],
     queryFn: () => runStaffRequest((token) => staffApi.reservations(token, { size: 20 })),
-    enabled: Boolean(session?.accessToken),
+    enabled: Boolean(session?.accessToken) && canManageFloor,
     retry: false,
   });
 
   const serviceRequestsQuery = useQuery({
     queryKey: ['staff', 'service-requests', session?.accessToken],
     queryFn: () => runStaffRequest((token) => staffApi.serviceRequests(token, { size: 20, status: 'OPEN' })),
-    enabled: Boolean(session?.accessToken),
+    enabled: Boolean(session?.accessToken) && canManageFloor,
     retry: false,
   });
 
   const tablesQuery = useQuery({
     queryKey: ['staff', 'tables', session?.accessToken],
     queryFn: () => runStaffRequest((token) => staffApi.tables(token, { size: 50, active: true, status: 'AVAILABLE' })),
-    enabled: Boolean(session?.accessToken),
+    enabled: Boolean(session?.accessToken) && canManageFloor,
     retry: false,
   });
 
   const tableSessionsQuery = useQuery({
     queryKey: ['staff', 'table-sessions', session?.accessToken],
     queryFn: () => runStaffRequest((token) => staffApi.tableSessions(token, { size: 20, status: 'OPEN' })),
-    enabled: Boolean(session?.accessToken),
+    enabled: Boolean(session?.accessToken) && canManageFloor,
     retry: false,
   });
 
   const ordersQuery = useQuery({
     queryKey: ['staff', 'orders', session?.accessToken],
     queryFn: () => runStaffRequest((token) => staffApi.orders(token, { size: 10 })),
-    enabled: Boolean(session?.accessToken),
+    enabled: Boolean(session?.accessToken) && canManageFloor,
     retry: false,
   });
 
   const invoicesQuery = useQuery({
     queryKey: ['staff', 'invoices', session?.accessToken],
     queryFn: () => runStaffRequest((token) => staffApi.invoices(token, { size: 10 })),
-    enabled: Boolean(session?.accessToken),
+    enabled: Boolean(session?.accessToken) && canManageBilling,
     retry: false,
   });
 
   const paymentsQuery = useQuery({
     queryKey: ['staff', 'payments', session?.accessToken],
     queryFn: () => runStaffRequest((token) => staffApi.payments(token, { size: 10 })),
-    enabled: Boolean(session?.accessToken),
+    enabled: Boolean(session?.accessToken) && canManageBilling,
     retry: false,
   });
+
+  const [invoicePresenceByOrderId, setInvoicePresenceByOrderId] = useState<Record<number, boolean>>({});
+
+  useEffect(() => {
+    if (!canManageBilling) {
+      setInvoicePresenceByOrderId({});
+      return;
+    }
+
+    const visibleOrders = ordersQuery.data?.content ?? [];
+    if (!visibleOrders.length) {
+      setInvoicePresenceByOrderId({});
+      return;
+    }
+
+    const recentInvoiceOrderIds = new Set((invoicesQuery.data?.content ?? []).map((invoice) => invoice.orderId));
+    const ordersNeedingLookup = visibleOrders.filter((order) => !recentInvoiceOrderIds.has(order.id));
+    let active = true;
+
+    void Promise.all(
+      ordersNeedingLookup.map(async (order) => {
+        const existingInvoices = await runStaffRequest((token) => staffApi.invoices(token, { size: 1, orderId: order.id }));
+        return [order.id, existingInvoices.content.some((invoice) => invoice.orderId === order.id)] as const;
+      }),
+    )
+      .then((results) => {
+        if (!active) {
+          return;
+        }
+
+        const nextPresence: Record<number, boolean> = {};
+        visibleOrders.forEach((order) => {
+          nextPresence[order.id] = recentInvoiceOrderIds.has(order.id);
+        });
+        results.forEach(([orderId, hasInvoice]) => {
+          nextPresence[orderId] = hasInvoice;
+        });
+        setInvoicePresenceByOrderId(nextPresence);
+      })
+      .catch(() => {
+        if (!active) {
+          return;
+        }
+
+        setInvoicePresenceByOrderId((current) => {
+          const nextPresence: Record<number, boolean> = {};
+          visibleOrders.forEach((order) => {
+            if (recentInvoiceOrderIds.has(order.id)) {
+              nextPresence[order.id] = true;
+            } else if (current[order.id] !== undefined) {
+              nextPresence[order.id] = current[order.id];
+            }
+          });
+          return nextPresence;
+        });
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [canManageBilling, invoicesQuery.data, ordersQuery.data]);
 
   const reservationActionMutation = useMutation({
     mutationFn: (action: ReservationActionInput) =>
@@ -764,8 +830,14 @@ function StaffDashboardPage({
   });
 
   const createInvoiceMutation = useMutation({
-    mutationFn: (orderId: number) => runStaffRequest((token) => staffApi.createInvoice(token, orderId)),
-    onSuccess: () => {
+    mutationFn: (order: InvoiceCreationInput) =>
+      runStaffRequest(async (token) => {
+        const existingInvoices = await staffApi.invoices(token, { size: 1, orderId: order.orderId });
+        return existingInvoices.content.find((invoice) => invoice.orderId === order.orderId)
+          ?? await staffApi.createInvoice(token, order.orderId);
+      }),
+    onSuccess: (invoice) => {
+      setInvoicePresenceByOrderId((current) => ({ ...current, [invoice.orderId]: true }));
       void queryClient.invalidateQueries({ queryKey: ['staff'] });
     },
   });
@@ -807,79 +879,95 @@ function StaffDashboardPage({
       {dashboardQuery.error ? <ErrorState error={dashboardQuery.error} /> : null}
 
       {dashboardQuery.data ? (
-        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-          <MetricCard label="Orders" value={String(dashboardQuery.data.orders.totalElements)} tone="forest" />
-          <MetricCard label="Reservations" value={String(dashboardQuery.data.reservations.totalElements)} tone="ember" />
-          <MetricCard label="Service requests" value={String(dashboardQuery.data.serviceRequests.totalElements)} tone="slate" />
-          <MetricCard label="Invoices" value={String(dashboardQuery.data.invoices.totalElements)} tone="forest" />
-          <MetricCard label="Payments" value={String(dashboardQuery.data.payments.totalElements)} tone="ember" />
+        <section className={clsx('grid gap-4 md:grid-cols-2', canManageFloor && canManageBilling ? 'xl:grid-cols-5' : canManageFloor ? 'xl:grid-cols-3' : 'xl:grid-cols-2')}>
+          {canManageFloor ? <MetricCard label="Orders" value={String(dashboardQuery.data.orders.totalElements)} tone="forest" /> : null}
+          {canManageFloor ? <MetricCard label="Reservations" value={String(dashboardQuery.data.reservations.totalElements)} tone="ember" /> : null}
+          {canManageFloor ? <MetricCard label="Service requests" value={String(dashboardQuery.data.serviceRequests.totalElements)} tone="slate" /> : null}
+          {canManageBilling ? <MetricCard label="Invoices" value={String(dashboardQuery.data.invoices.totalElements)} tone="forest" /> : null}
+          {canManageBilling ? <MetricCard label="Payments" value={String(dashboardQuery.data.payments.totalElements)} tone="ember" /> : null}
+        </section>
+      ) : null}
+
+      {!canManageFloor && !canManageBilling ? (
+        <section className="panel px-6 py-8 sm:px-8">
+          <EmptyMessage message="No workspace sections are available for the current role." />
         </section>
       ) : null}
 
       <section className="grid gap-6 xl:grid-cols-2">
-        <DataPanel title="Reservation queue" subtitle="Confirm, seat, and complete reservations directly from the staff surface.">
-          {reservationsQuery.isLoading ? <LoadingState label="Loading reservations" /> : null}
-          {reservationsQuery.error ? <ErrorState error={reservationsQuery.error} /> : null}
-          {tablesQuery.isLoading ? <LoadingState label="Loading table options" /> : null}
-          {tablesQuery.error ? <ErrorState error={tablesQuery.error} /> : null}
-          {reservationActionMutation.error ? <div className="mt-4"><InlineError error={reservationActionMutation.error} /></div> : null}
-          {reservationsQuery.data ? (
-            <ReservationList
-              availableTables={tablesQuery.data?.content ?? []}
-              isMutating={reservationActionMutation.isPending}
-              onAction={(action) => reservationActionMutation.mutate(action)}
-              reservations={reservationsQuery.data.content}
-            />
-          ) : null}
-        </DataPanel>
+        {canManageFloor ? (
+          <>
+            <DataPanel title="Reservation queue" subtitle="Confirm, seat, and complete reservations directly from the staff surface.">
+              {reservationsQuery.isLoading ? <LoadingState label="Loading reservations" /> : null}
+              {reservationsQuery.error ? <ErrorState error={reservationsQuery.error} /> : null}
+              {tablesQuery.isLoading ? <LoadingState label="Loading table options" /> : null}
+              {tablesQuery.error ? <ErrorState error={tablesQuery.error} /> : null}
+              {reservationActionMutation.error ? <div className="mt-4"><InlineError error={reservationActionMutation.error} /></div> : null}
+              {reservationsQuery.data ? (
+                <ReservationList
+                  availableTables={tablesQuery.data?.content ?? []}
+                  isMutating={reservationActionMutation.isPending}
+                  onAction={(action) => reservationActionMutation.mutate(action)}
+                  reservations={reservationsQuery.data.content}
+                />
+              ) : null}
+            </DataPanel>
 
-        <DataPanel title="Open service requests" subtitle="Resolve waiter calls and bill requests as soon as they land.">
-          {serviceRequestsQuery.isLoading ? <LoadingState label="Loading service requests" /> : null}
-          {serviceRequestsQuery.error ? <ErrorState error={serviceRequestsQuery.error} /> : null}
-          {serviceRequestMutation.error ? <div className="mt-4"><InlineError error={serviceRequestMutation.error} /></div> : null}
-          {serviceRequestsQuery.data ? (
-            <ServiceRequestList
-              isMutating={serviceRequestMutation.isPending}
-              onResolve={(requestId) => serviceRequestMutation.mutate(requestId)}
-              requests={serviceRequestsQuery.data.content}
-            />
-          ) : null}
-        </DataPanel>
+            <DataPanel title="Open service requests" subtitle="Resolve waiter calls and bill requests as soon as they land.">
+              {serviceRequestsQuery.isLoading ? <LoadingState label="Loading service requests" /> : null}
+              {serviceRequestsQuery.error ? <ErrorState error={serviceRequestsQuery.error} /> : null}
+              {serviceRequestMutation.error ? <div className="mt-4"><InlineError error={serviceRequestMutation.error} /></div> : null}
+              {serviceRequestsQuery.data ? (
+                <ServiceRequestList
+                  isMutating={serviceRequestMutation.isPending}
+                  onResolve={(requestId) => serviceRequestMutation.mutate(requestId)}
+                  requests={serviceRequestsQuery.data.content}
+                />
+              ) : null}
+            </DataPanel>
+          </>
+        ) : null}
 
-        <DataPanel title="Cashier workbench" subtitle="Confirm orders, issue invoices, and record payments from one surface.">
-          {ordersQuery.isLoading ? <LoadingState label="Loading orders" /> : null}
-          {ordersQuery.error ? <ErrorState error={ordersQuery.error} /> : null}
-          {invoicesQuery.isLoading ? <LoadingState label="Loading invoices" /> : null}
-          {invoicesQuery.error ? <ErrorState error={invoicesQuery.error} /> : null}
-          {paymentsQuery.isLoading ? <LoadingState label="Loading payments" /> : null}
-          {paymentsQuery.error ? <ErrorState error={paymentsQuery.error} /> : null}
-          {ordersQuery.data && invoicesQuery.data && paymentsQuery.data ? (
-            <CashierWorkbench
-              orders={ordersQuery.data.content}
-              invoices={invoicesQuery.data.content}
-              payments={paymentsQuery.data.content}
-              isBusy={orderActionMutation.isPending || createInvoiceMutation.isPending || recordPaymentMutation.isPending}
-              orderError={orderActionMutation.error}
-              invoiceError={createInvoiceMutation.error}
-              paymentError={recordPaymentMutation.error}
-              onCancelOrder={(orderId) => orderActionMutation.mutate({ kind: 'cancel', orderId })}
-              onConfirmOrder={(orderId) => orderActionMutation.mutate({ kind: 'confirm', orderId })}
-              onCreateInvoice={(orderId) => createInvoiceMutation.mutate(orderId)}
-              onRecordPayment={(payload) => recordPaymentMutation.mutate(payload)}
-            />
-          ) : null}
-        </DataPanel>
+        {canManageFloor || canManageBilling ? (
+          <DataPanel title="Operations workbench" subtitle="Handle order confirmations and billing actions from one surface.">
+            {canManageFloor && ordersQuery.isLoading ? <LoadingState label="Loading orders" /> : null}
+            {canManageFloor && ordersQuery.error ? <ErrorState error={ordersQuery.error} /> : null}
+            {canManageBilling && invoicesQuery.isLoading ? <LoadingState label="Loading invoices" /> : null}
+            {canManageBilling && invoicesQuery.error ? <ErrorState error={invoicesQuery.error} /> : null}
+            {canManageBilling && paymentsQuery.isLoading ? <LoadingState label="Loading payments" /> : null}
+            {canManageBilling && paymentsQuery.error ? <ErrorState error={paymentsQuery.error} /> : null}
+            {(!canManageFloor || ordersQuery.data) && (!canManageBilling || (invoicesQuery.data && paymentsQuery.data)) ? (
+              <CashierWorkbench
+                orders={ordersQuery.data?.content ?? []}
+                invoices={invoicesQuery.data?.content ?? []}
+                payments={paymentsQuery.data?.content ?? []}
+                isBusy={orderActionMutation.isPending || createInvoiceMutation.isPending || recordPaymentMutation.isPending}
+                orderError={orderActionMutation.error}
+                invoiceError={createInvoiceMutation.error}
+                paymentError={recordPaymentMutation.error}
+                showOrderOperations={canManageFloor}
+                showBillingOperations={canManageBilling}
+                invoicePresenceByOrderId={invoicePresenceByOrderId}
+                onCancelOrder={(orderId) => orderActionMutation.mutate({ kind: 'cancel', orderId })}
+                onConfirmOrder={(orderId) => orderActionMutation.mutate({ kind: 'confirm', orderId })}
+                onCreateInvoice={(order) => createInvoiceMutation.mutate({ orderId: order.id, orderCode: order.orderCode })}
+                onRecordPayment={(payload) => recordPaymentMutation.mutate(payload)}
+              />
+            ) : null}
+          </DataPanel>
+        ) : null}
 
-        <DataPanel title="Open table sessions" subtitle="See which tables already have a live session before seating or check-in.">
-          {tableSessionsQuery.isLoading ? <LoadingState label="Loading table sessions" /> : null}
-          {tableSessionsQuery.error ? <ErrorState error={tableSessionsQuery.error} /> : null}
-          {tableSessionsQuery.data ? <TableSessionList sessions={tableSessionsQuery.data.content} /> : null}
-        </DataPanel>
+        {canManageFloor ? (
+          <DataPanel title="Open table sessions" subtitle="See which tables already have a live session before seating or check-in.">
+            {tableSessionsQuery.isLoading ? <LoadingState label="Loading table sessions" /> : null}
+            {tableSessionsQuery.error ? <ErrorState error={tableSessionsQuery.error} /> : null}
+            {tableSessionsQuery.data ? <TableSessionList sessions={tableSessionsQuery.data.content} /> : null}
+          </DataPanel>
+        ) : null}
       </section>
     </div>
   );
 }
-
 function ProtectedRoute({
   children,
   session,
@@ -1330,6 +1418,18 @@ function getErrorMessage(error: unknown) {
 
   return 'Something went wrong.';
 }
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

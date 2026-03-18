@@ -62,7 +62,7 @@ class InvoiceServiceTest {
         when(invoiceRepository.findAll(any(Specification.class), eq(PageRequest.of(0, 20))))
                 .thenReturn(new PageImpl<>(List.of(invoice), PageRequest.of(0, 20), 1));
 
-        PageResponse<com.restaurant.management.billing.dto.InvoiceResponse> response = service.list(PageRequest.of(0, 20), null, null);
+        PageResponse<com.restaurant.management.billing.dto.InvoiceResponse> response = service.list(PageRequest.of(0, 20), null, null, null);
 
         assertThat(response.content()).hasSize(1);
         assertThat(response.content().getFirst().items()).isEmpty();
@@ -70,3 +70,4 @@ class InvoiceServiceTest {
         verifyNoInteractions(invoiceItemRepository, paymentRepository);
     }
 }
+
