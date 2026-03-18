@@ -5,3 +5,8 @@ spring:
     password: root
   jpa:
     show-sql: false
+
+app:
+  bootstrap:
+    demo:
+      enabled: true

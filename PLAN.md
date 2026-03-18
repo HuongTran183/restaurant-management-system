@@ -18,7 +18,7 @@
 10. Xây staff app tối thiểu gồm: đăng nhập, sơ đồ bàn/table session, workspace order nội bộ, invoice/payment screen, quản lý category/menu item, danh sách service request và quản lý reservation. Dashboard chỉ cần mức “tổng quan vận hành cơ bản”, không làm analytics sâu.
 11. Xây public app tối thiểu gồm: landing/menu public, form đặt bàn + tra cứu đặt bàn, landing page theo QR token, menu/giỏ hàng theo QR, trang trạng thái order, và thao tác gọi nhân viên/yêu cầu thanh toán.
 12. Giữ contract auth hiện tại trong pha này. Frontend dùng access token cho request bảo vệ và refresh token để làm mới phiên; không đổi sang cookie/session trong MVP để tránh lan rộng phạm vi backend.
-13. Hoàn thiện trải nghiệm demo/dev: seed dữ liệu mẫu ngoài admin mặc định, mở rộng `compose.yaml` hoặc thêm compose dev để chạy trọn bộ MySQL + backend + frontend, và bổ sung script chạy local nhất quán.
+13. Hoàn thiện trải nghiệm demo/dev: local demo seed cho public menu + QR đã có, tiếp tục mở rộng `compose.yaml` hoặc thêm compose dev để chạy trọn bộ MySQL + backend + frontend, và bổ sung script chạy local nhất quán.
 
 ## Public APIs / Interfaces
 - Thêm nhóm API nội bộ còn thiếu: `/api/customers`, `/api/reservations`, và list/filter endpoints cho `/api/orders`, `/api/invoices`, `/api/payments`, `/api/service-requests`.

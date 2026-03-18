@@ -11,8 +11,8 @@ Implemented now:
 - Backend integration coverage for auth, public QR ordering, reservation lifecycle, and critical service guards
 
 Current limits:
-- Only the admin account is auto-seeded on a fresh database
-- Public menu and QR demo flows need menu/table/QR data to be created manually after bootstrap
+- The admin account is auto-seeded on a fresh database
+- Public menu and QR demo flows auto-seed only in the `local` profile, not in tests or production
 - Staff frontend is still a thin operational dashboard, not the full POS surface yet
 
 ## Tech Stack
@@ -78,13 +78,22 @@ If you want to scan from another device on the same network, replace `localhost`
 
 ### 5. Seed demo data for public menu and QR flows
 
-A fresh database only contains roles and the admin user. To demo the public site end-to-end, create these records through Swagger or the secured APIs after logging in as `admin`:
-1. Create at least one area and one active dining table.
-2. Create at least one active category and one active, available menu item.
-3. Generate a QR for the table.
-4. Open the generated `landingUrl`, or visit `http://localhost:5173/qr/<token>` directly.
+When you start the backend with the default `local` profile, the app seeds a minimal demo area, table, category, menu item, and QR automatically on a fresh database.
 
-Without that setup, the public menu page can be empty and the QR journey has no valid token to resolve.
+Demo seed defaults:
+- Area: `DEMO-HALL`
+- Table: `T-01`
+- Category: `DEMO-FOOD`
+- Menu item: `PHO-DEMO`
+
+The startup log includes the QR `landingUrl`, and the secured table API can also return it:
+- `GET /api/tables/{tableId}/qr`
+
+Public QR landing URLs use the React route:
+- Default local base: `http://localhost:5173/qr`
+- Open the full URL from the QR response, or visit `http://localhost:5173/qr/<token>` directly
+
+If you want a blank local database, set `APP_BOOTSTRAP_DEMO=false` before starting the backend.
 
 ## Testing
 
@@ -95,7 +104,7 @@ Without that setup, the public menu page can be empty and the QR journey has no 
 ```
 
 Current expected result:
-- `15` tests
+- `19` tests
 - `0` failures
 - `0` skipped when Docker is available
 

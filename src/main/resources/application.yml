@@ -49,6 +49,9 @@ app:
       password: ${APP_SEED_ADMIN_PASSWORD:Admin@123456}
       full-name: ${APP_SEED_ADMIN_FULL_NAME:System Administrator}
       email: ${APP_SEED_ADMIN_EMAIL:admin@restaurant.local}
+  bootstrap:
+    demo:
+      enabled: ${APP_BOOTSTRAP_DEMO:false}
   storage:
     root: ${APP_STORAGE_ROOT:./data/storage}
   qr:
