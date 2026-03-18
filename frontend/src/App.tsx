@@ -671,6 +671,26 @@ function StaffDashboardPage({
     }
   };
 
+  const loadAllPages = async <T,>(
+    requestPage: (token: string, page: number, size: number) => Promise<{ content: T[]; totalPages: number }>,
+    pageSize = 100,
+  ): Promise<T[]> => {
+    return runStaffRequest(async (token) => {
+      const content: T[] = [];
+      let page = 0;
+      let totalPages = 1;
+
+      while (page < totalPages) {
+        const response = await requestPage(token, page, pageSize);
+        content.push(...response.content);
+        totalPages = Math.max(response.totalPages, page + 1);
+        page += 1;
+      }
+
+      return content;
+    });
+  };
+
   const dashboardQuery = useQuery({
     queryKey: ['staff', 'dashboard', session?.accessToken, canManageFloor, canManageBilling],
     queryFn: () => runStaffRequest((token) => staffApi.dashboard(token, { canManageFloor, canManageBilling })),
@@ -685,6 +705,23 @@ function StaffDashboardPage({
     retry: false,
   });
 
+  const floorReservationsQuery = useQuery({
+    queryKey: ['staff', 'floor-reservations', session?.accessToken],
+    queryFn: async () => {
+      const [pending, confirmed, checkedIn] = await Promise.all([
+        loadAllPages((token, page, size) => staffApi.reservations(token, { page, size, status: 'PENDING' })),
+        loadAllPages((token, page, size) => staffApi.reservations(token, { page, size, status: 'CONFIRMED' })),
+        loadAllPages((token, page, size) => staffApi.reservations(token, { page, size, status: 'CHECKED_IN' })),
+      ]);
+
+      return [...pending, ...confirmed, ...checkedIn]
+        .sort((left, right) => new Date(left.reservationTime).getTime() - new Date(right.reservationTime).getTime())
+        .filter((reservation, index, reservations) => reservations.findIndex((candidate) => candidate.id === reservation.id) === index);
+    },
+    enabled: Boolean(session?.accessToken) && canManageFloor,
+    retry: false,
+  });
+
   const serviceRequestsQuery = useQuery({
     queryKey: ['staff', 'service-requests', session?.accessToken],
     queryFn: () => runStaffRequest((token) => staffApi.serviceRequests(token, { size: 20, status: 'OPEN' })),
@@ -694,21 +731,21 @@ function StaffDashboardPage({
 
   const tablesQuery = useQuery({
     queryKey: ['staff', 'tables', session?.accessToken],
-    queryFn: () => runStaffRequest((token) => staffApi.tables(token, { size: 50, active: true, status: 'AVAILABLE' })),
+    queryFn: () => loadAllPages((token, page, size) => staffApi.tables(token, { page, size, active: true, status: 'AVAILABLE' })),
     enabled: Boolean(session?.accessToken) && canManageFloor,
     retry: false,
   });
 
   const floorTablesQuery = useQuery({
     queryKey: ['staff', 'floor-tables', session?.accessToken],
-    queryFn: () => runStaffRequest((token) => staffApi.tables(token, { size: 100, active: true })),
+    queryFn: () => loadAllPages((token, page, size) => staffApi.tables(token, { page, size, active: true })),
     enabled: Boolean(session?.accessToken) && canManageFloor,
     retry: false,
   });
 
   const tableSessionsQuery = useQuery({
     queryKey: ['staff', 'table-sessions', session?.accessToken],
-    queryFn: () => runStaffRequest((token) => staffApi.tableSessions(token, { size: 50, status: 'OPEN' })),
+    queryFn: () => loadAllPages((token, page, size) => staffApi.tableSessions(token, { page, size, status: 'OPEN' })),
     enabled: Boolean(session?.accessToken) && canManageFloor,
     retry: false,
   });
@@ -908,13 +945,13 @@ function StaffDashboardPage({
           {floorTablesQuery.error ? <ErrorState error={floorTablesQuery.error} /> : null}
           {tableSessionsQuery.isLoading ? <LoadingState label="Loading table sessions" /> : null}
           {tableSessionsQuery.error ? <ErrorState error={tableSessionsQuery.error} /> : null}
-          {reservationsQuery.isLoading ? <LoadingState label="Loading reservations" /> : null}
-          {reservationsQuery.error ? <ErrorState error={reservationsQuery.error} /> : null}
-          {floorTablesQuery.data && tableSessionsQuery.data && reservationsQuery.data ? (
+          {floorReservationsQuery.isLoading ? <LoadingState label="Loading active reservations" /> : null}
+          {floorReservationsQuery.error ? <ErrorState error={floorReservationsQuery.error} /> : null}
+          {floorTablesQuery.data && tableSessionsQuery.data && floorReservationsQuery.data ? (
             <FloorOverview
-              reservations={reservationsQuery.data.content}
-              sessions={tableSessionsQuery.data.content}
-              tables={floorTablesQuery.data.content}
+              reservations={floorReservationsQuery.data}
+              sessions={tableSessionsQuery.data}
+              tables={floorTablesQuery.data}
             />
           ) : null}
         </DataPanel>
@@ -931,7 +968,7 @@ function StaffDashboardPage({
               {reservationActionMutation.error ? <div className="mt-4"><InlineError error={reservationActionMutation.error} /></div> : null}
               {reservationsQuery.data ? (
                 <ReservationList
-                  availableTables={tablesQuery.data?.content ?? []}
+                  availableTables={tablesQuery.data ?? []}
                   isMutating={reservationActionMutation.isPending}
                   onAction={(action) => reservationActionMutation.mutate(action)}
                   reservations={reservationsQuery.data.content}
@@ -987,7 +1024,7 @@ function StaffDashboardPage({
           <DataPanel title="Open table sessions" subtitle="See which tables already have a live session before seating or check-in.">
             {tableSessionsQuery.isLoading ? <LoadingState label="Loading table sessions" /> : null}
             {tableSessionsQuery.error ? <ErrorState error={tableSessionsQuery.error} /> : null}
-            {tableSessionsQuery.data ? <TableSessionList sessions={tableSessionsQuery.data.content} /> : null}
+            {tableSessionsQuery.data ? <TableSessionList sessions={tableSessionsQuery.data} /> : null}
           </DataPanel>
         ) : null}
       </section>
@@ -1444,6 +1481,8 @@ function getErrorMessage(error: unknown) {
 
   return 'Something went wrong.';
 }
+
+
 
 
 
