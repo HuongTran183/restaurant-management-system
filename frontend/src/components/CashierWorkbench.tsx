@@ -10,6 +10,7 @@ type CashierWorkbenchProps = {
   invoices: Invoice[];
   payments: Payment[];
   menuItems: MenuItem[];
+  sessionLabelById: Record<number, string>;
   isBusy: boolean;
   orderError: unknown;
   invoiceError: unknown;
@@ -37,6 +38,7 @@ export function CashierWorkbench({
   invoices,
   payments,
   menuItems,
+  sessionLabelById,
   isBusy,
   orderError,
   invoiceError,
@@ -59,7 +61,54 @@ export function CashierWorkbench({
   });
 
   const invoiceByOrderId = useMemo(() => new Map(invoices.map((invoice) => [invoice.orderId, invoice])), [invoices]);
+  const paymentsByInvoiceId = useMemo(() => {
+    const entries = new Map<number, Payment[]>();
+    payments.forEach((payment) => {
+      const existing = entries.get(payment.invoiceId) ?? [];
+      existing.push(payment);
+      entries.set(payment.invoiceId, existing);
+    });
+    return entries;
+  }, [payments]);
   const openInvoices = useMemo(() => invoices.filter((invoice) => invoice.status === 'OPEN' && invoice.totalAmount > invoice.paidAmount), [invoices]);
+  const orderGroups = useMemo(() => {
+    const groups = new Map<string, {
+      key: string;
+      label: string;
+      helper: string;
+      orderCount: number;
+      totalAmount: number;
+      needsAttention: boolean;
+      paymentRequested: boolean;
+    }>();
+
+    orders.forEach((order) => {
+      const key = order.tableSessionId === null ? 'detached' : `session-${order.tableSessionId}`;
+      const label = order.tableSessionId === null
+        ? 'Counter / detached order'
+        : sessionLabelById[order.tableSessionId] ?? `Session #${order.tableSessionId}`;
+      const helper = order.tableSessionId === null
+        ? 'No live table session is attached'
+        : `Session #${order.tableSessionId}`;
+      const group = groups.get(key) ?? {
+        key,
+        label,
+        helper,
+        orderCount: 0,
+        totalAmount: 0,
+        needsAttention: false,
+        paymentRequested: false,
+      };
+
+      group.orderCount += 1;
+      group.totalAmount += order.totalAmount;
+      group.needsAttention = group.needsAttention || order.status === 'DRAFT' || order.items.some((item) => item.status === 'NEW');
+      group.paymentRequested = group.paymentRequested || order.paymentRequested;
+      groups.set(key, group);
+    });
+
+    return [...groups.values()].sort((left, right) => left.label.localeCompare(right.label));
+  }, [orders, sessionLabelById]);
 
   useEffect(() => {
     if (!showBillingOperations) {
@@ -176,10 +225,29 @@ export function CashierWorkbench({
           {orderError ? <ErrorPill error={orderError} /> : null}
           {invoiceError && showBillingOperations ? <ErrorPill error={invoiceError} /> : null}
 
+          {orderGroups.length ? (
+            <div className="grid gap-3 lg:grid-cols-2">
+              {orderGroups.map((group) => (
+                <article key={group.key} className="rounded-[22px] border border-ink/10 bg-cream/55 px-4 py-4">
+                  <p className="text-xs font-bold uppercase tracking-[0.22em] text-slate">Session lane</p>
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <p className="font-semibold text-ink">{group.label}</p>
+                    {group.needsAttention ? <Badge tone="ember">Needs attention</Badge> : null}
+                    {group.paymentRequested ? <Badge tone="warm">Payment requested</Badge> : null}
+                  </div>
+                  <p className="mt-2 text-sm leading-7 text-slate">
+                    {group.helper} • {group.orderCount} order(s) • {formatMoney(group.totalAmount)}
+                  </p>
+                </article>
+              ))}
+            </div>
+          ) : null}
+
           <div className="space-y-3">
             {orders.length ? (
               orders.map((order) => {
                 const invoice = invoiceByOrderId.get(order.id);
+                const orderPayments = invoice ? paymentsByInvoiceId.get(invoice.id) ?? [] : [];
                 const hasKnownInvoice = Boolean(invoice) || invoicePresenceByOrderId[order.id] === true;
                 const hasPendingNewItems = order.items.some((item) => item.status === 'NEW');
                 const invoiceStatusKnown = Boolean(invoice) || invoicePresenceByOrderId[order.id] !== undefined;
@@ -187,6 +255,10 @@ export function CashierWorkbench({
                 const canCancel = order.status === 'DRAFT' || order.status === 'CONFIRMED';
                 const canCreateInvoice = showBillingOperations && invoiceStatusKnown && !hasKnownInvoice
                   && (order.status === 'CONFIRMED' || order.status === 'COMPLETED');
+                const timeline = buildOrderTimeline(order, invoice, orderPayments);
+                const sessionLabel = order.tableSessionId === null
+                  ? 'Counter / detached order'
+                  : sessionLabelById[order.tableSessionId] ?? `Session #${order.tableSessionId}`;
 
                 return (
                   <article key={order.id} className="rounded-[24px] border border-ink/10 bg-white/85 p-4 shadow-float">
@@ -200,11 +272,41 @@ export function CashierWorkbench({
                           <Badge tone={order.sourceChannel === 'QR' ? 'forest' : 'neutral'}>{order.sourceChannel}</Badge>
                         </div>
                         <p className="text-sm leading-7 text-slate">
-                          {order.items.length} item(s) • {order.tableSessionId ? `Session #${order.tableSessionId}` : 'No table session'}
+                          {order.items.length} item(s) • {sessionLabel}
                         </p>
                         <div className="grid gap-2 sm:grid-cols-2">
                           <InfoPair label="Subtotal" value={formatMoney(order.subtotal)} />
                           <InfoPair label="Total" value={formatMoney(order.totalAmount)} />
+                        </div>
+                        {order.note ? (
+                          <div className="rounded-[20px] border border-ink/10 bg-white/75 px-4 py-3 text-sm leading-7 text-slate">
+                            Order note: {order.note}
+                          </div>
+                        ) : null}
+                        <div className="rounded-[22px] border border-ink/10 bg-white/75 px-4 py-4">
+                          <div className="flex items-center justify-between gap-3">
+                            <p className="text-xs font-bold uppercase tracking-[0.24em] text-slate">Timeline</p>
+                            <span className="text-xs font-bold uppercase tracking-[0.18em] text-slate">{timeline.length} checkpoints</span>
+                          </div>
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            {timeline.map((entry) => (
+                              <span
+                                key={`${order.id}-${entry.label}`}
+                                className={clsx(
+                                  'rounded-full border px-3 py-2 text-xs font-semibold',
+                                  entry.tone === 'forest'
+                                    ? 'border-forest/20 bg-forest/10 text-forest'
+                                    : entry.tone === 'ember'
+                                      ? 'border-ember/20 bg-ember/10 text-ember'
+                                      : entry.tone === 'warm'
+                                        ? 'border-amber-300/40 bg-amber-100/70 text-amber-900'
+                                        : 'border-slate/15 bg-slate/10 text-slate',
+                                )}
+                              >
+                                {entry.detail ? `${entry.label} • ${entry.detail}` : entry.label}
+                              </span>
+                            ))}
+                          </div>
                         </div>
                         <div className="space-y-3 rounded-[22px] border border-ink/10 bg-cream/50 px-4 py-4">
                           <div className="flex items-center justify-between gap-3">
@@ -571,12 +673,87 @@ function EmptyState({ message }: { message: string }) {
   return <div className="rounded-[22px] border border-dashed border-ink/15 bg-white/60 px-4 py-5 text-sm leading-7 text-slate">{message}</div>;
 }
 
+function buildOrderTimeline(order: Order, invoice: Invoice | undefined, payments: Payment[]) {
+  const checkpoints: Array<{ label: string; detail?: string; tone: 'forest' | 'ember' | 'warm' | 'neutral' }> = [
+    {
+      label: 'Ticket open',
+      detail: order.orderType === 'DINE_IN' ? 'Dining room' : order.orderType.replace('_', ' '),
+      tone: 'neutral',
+    },
+  ];
+
+  if (order.status === 'DRAFT') {
+    checkpoints.push({ label: 'Needs confirm', tone: 'ember' });
+  }
+
+  if (order.status === 'CONFIRMED') {
+    checkpoints.push({ label: 'Confirmed', tone: 'forest' });
+  }
+
+  if (order.items.some((item) => item.status === 'NEW')) {
+    checkpoints.push({ label: 'New line items', tone: 'ember' });
+  }
+
+  if (order.paymentRequested) {
+    checkpoints.push({ label: 'Guest requested bill', tone: 'warm' });
+  }
+
+  if (invoice) {
+    checkpoints.push({
+      label: invoice.status === 'PAID' ? 'Invoice closed' : 'Invoice issued',
+      detail: formatMoment(invoice.issuedAt),
+      tone: invoice.status === 'PAID' ? 'forest' : 'neutral',
+    });
+  }
+
+  if (invoice && invoice.paidAmount > 0 && invoice.paidAmount < invoice.totalAmount) {
+    checkpoints.push({
+      label: 'Partial payment',
+      detail: `${formatMoney(invoice.paidAmount)} collected`,
+      tone: 'warm',
+    });
+  }
+
+  if (payments.length) {
+    const latestPayment = [...payments]
+      .sort((left, right) => (new Date(right.paidAt ?? 0).getTime() - new Date(left.paidAt ?? 0).getTime()))[0];
+    checkpoints.push({
+      label: invoice?.status === 'PAID' ? 'Paid in full' : 'Payment logged',
+      detail: latestPayment?.paidAt ? formatMoment(latestPayment.paidAt) : undefined,
+      tone: invoice?.status === 'PAID' ? 'forest' : 'neutral',
+    });
+  }
+
+  if (order.status === 'COMPLETED') {
+    checkpoints.push({ label: 'Service completed', tone: 'forest' });
+  }
+
+  if (order.status === 'CANCELLED') {
+    checkpoints.push({ label: 'Ticket cancelled', tone: 'warm' });
+  }
+
+  return checkpoints;
+}
+
 function formatMoney(value: number) {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: 'USD',
     maximumFractionDigits: 2,
   }).format(Number(value));
+}
+
+function formatMoment(value: string | null) {
+  if (!value) {
+    return undefined;
+  }
+
+  return new Intl.DateTimeFormat('en-US', {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  }).format(new Date(value));
 }
 
 function getErrorMessage(error: unknown) {

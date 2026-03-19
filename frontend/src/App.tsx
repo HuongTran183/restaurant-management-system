@@ -1,6 +1,6 @@
 import clsx from 'clsx';
 import type { FormEvent, ReactNode } from 'react';
-import { useDeferredValue, useEffect, useRef, useState } from 'react';
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, Navigate, NavLink, Route, Routes, useNavigate, useParams } from 'react-router-dom';
 import {
@@ -644,6 +644,7 @@ type FloorActionInput =
   | { kind: 'seat-walk-in'; table: DiningTable };
 
 type ReservationQueueScope = 'ACTIVE' | 'HISTORY' | 'ALL';
+type ReservationHostFilter = 'ALL' | 'NEEDS_TABLE' | 'NEXT_SERVICE' | 'LARGE_PARTY';
 type WorkspaceLane = 'ALL' | 'FLOOR' | 'BILLING';
 
 const ACTIVE_RESERVATION_STATUSES: ReservationStatus[] = ['PENDING', 'CONFIRMED', 'CHECKED_IN'];
@@ -667,6 +668,8 @@ function StaffDashboardPage({
     canManageFloor && canManageBilling ? 'ALL' : canManageFloor ? 'FLOOR' : 'BILLING',
   );
   const [reservationQueueScope, setReservationQueueScope] = useState<ReservationQueueScope>('ACTIVE');
+  const [reservationHostFilter, setReservationHostFilter] = useState<ReservationHostFilter>('ALL');
+  const [reservationAreaFilter, setReservationAreaFilter] = useState('ALL');
   const [reservationSearch, setReservationSearch] = useState('');
   const [orderSearch, setOrderSearch] = useState('');
   const [orderSessionFilter, setOrderSessionFilter] = useState<number | null>(null);
@@ -719,6 +722,8 @@ function StaffDashboardPage({
         ? 'HISTORY'
         : 'ACTIVE',
     );
+    setReservationHostFilter('ALL');
+    setReservationAreaFilter('ALL');
     setReservationSearch(reservation.reservationCode);
     scrollToPanel(reservationPanelRef);
   };
@@ -1113,6 +1118,30 @@ function StaffDashboardPage({
     || createStaffOrderMutation.isPending
     || recordPaymentMutation.isPending;
   const workbenchOrderError = orderActionMutation.error ?? orderItemMutation.error;
+  const reservationAreaOptions = useMemo(() => {
+    const labels = new Set<string>();
+    (reservationsQuery.data ?? []).forEach((reservation) => {
+      if (reservation.requestedArea) {
+        labels.add(reservation.requestedArea);
+      }
+    });
+    return [...labels].sort((left, right) => left.localeCompare(right));
+  }, [reservationsQuery.data]);
+  const visibleReservations = useMemo(
+    () => filterReservationQueue(reservationsQuery.data ?? [], reservationHostFilter, reservationAreaFilter),
+    [reservationAreaFilter, reservationHostFilter, reservationsQuery.data],
+  );
+  const reservationHostSummary = useMemo(
+    () => summarizeReservationQueue(visibleReservations),
+    [visibleReservations],
+  );
+  const sessionLabelById = useMemo(() => {
+    const labels: Record<number, string> = {};
+    (tableSessionsQuery.data ?? []).forEach((sessionItem) => {
+      labels[sessionItem.id] = `${sessionItem.tableCode} • ${sessionItem.tableName}`;
+    });
+    return labels;
+  }, [tableSessionsQuery.data]);
 
   return (
     <div className="space-y-8">
@@ -1243,15 +1272,63 @@ function StaffDashboardPage({
 
                   <button
                     className="button-chip"
-                    disabled={reservationSearch.trim() === '' && reservationQueueScope === 'ACTIVE'}
+                    disabled={reservationSearch.trim() === '' && reservationQueueScope === 'ACTIVE' && reservationHostFilter === 'ALL' && reservationAreaFilter === 'ALL'}
                     onClick={() => {
                       setReservationQueueScope('ACTIVE');
+                      setReservationHostFilter('ALL');
+                      setReservationAreaFilter('ALL');
                       setReservationSearch('');
                     }}
                     type="button"
                   >
                     Clear filters
                   </button>
+                </div>
+
+                <div className="mb-5 grid gap-3 xl:grid-cols-[1.2fr_16rem]">
+                  <div className="flex flex-wrap gap-2">
+                    {([
+                      ['ALL', 'All arrivals'],
+                      ['NEEDS_TABLE', 'Need table'],
+                      ['NEXT_SERVICE', 'Next 3h'],
+                      ['LARGE_PARTY', 'Large party'],
+                    ] as Array<[ReservationHostFilter, string]>).map(([filterKey, label]) => (
+                      <button
+                        key={filterKey}
+                        className={clsx(
+                          'button-chip',
+                          reservationHostFilter === filterKey && 'border-forest/25 bg-forest/10 text-forest',
+                        )}
+                        onClick={() => setReservationHostFilter(filterKey)}
+                        type="button"
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+
+                  <label className="block">
+                    <span className="mb-2 block text-xs font-bold uppercase tracking-[0.24em] text-slate">Area focus</span>
+                    <select
+                      className="field"
+                      onChange={(event) => setReservationAreaFilter(event.target.value)}
+                      value={reservationAreaFilter}
+                    >
+                      <option value="ALL">All areas</option>
+                      <option value="__ANY__">Any area</option>
+                      {reservationAreaOptions.map((area) => (
+                        <option key={area} value={area}>
+                          {area}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+
+                <div className="mb-5 grid gap-3 md:grid-cols-3">
+                  <MiniQueueStat label="Visible" value={String(reservationHostSummary.total)} helper="after current filters" />
+                  <MiniQueueStat label="Need table" value={String(reservationHostSummary.needsTable)} helper="confirmed parties still unassigned" />
+                  <MiniQueueStat label="Next 3h" value={String(reservationHostSummary.nextService)} helper="upcoming arrival pressure" />
                 </div>
 
               {reservationsQuery.isLoading ? <LoadingState label="Loading reservations" /> : null}
@@ -1264,7 +1341,7 @@ function StaffDashboardPage({
                   availableTables={tablesQuery.data ?? []}
                   isMutating={reservationActionMutation.isPending}
                   onAction={(action) => reservationActionMutation.mutate(action)}
-                  reservations={reservationsQuery.data}
+                  reservations={visibleReservations}
                 />
               ) : null}
               </DataPanel>
@@ -1362,6 +1439,7 @@ function StaffDashboardPage({
                 invoices={invoicesQuery.data?.content ?? []}
                 payments={paymentsQuery.data?.content ?? []}
                 menuItems={staffMenuQuery.data?.items ?? []}
+                sessionLabelById={sessionLabelById}
                 isBusy={workbenchBusy}
                 orderError={workbenchOrderError}
                 invoiceError={createInvoiceMutation.error}
@@ -1722,6 +1800,77 @@ function RoleChip({ role }: { role: AuthSession['user']['roles'][number] }) {
     <span className="rounded-full border border-ink/10 bg-white/75 px-3 py-1 text-xs font-bold uppercase tracking-[0.2em] text-slate">
       {role.toLowerCase()}
     </span>
+  );
+}
+
+function MiniQueueStat({ helper, label, value }: { helper: string; label: string; value: string }) {
+  return (
+    <div className="rounded-[20px] border border-ink/10 bg-white/75 px-4 py-4">
+      <p className="text-xs font-bold uppercase tracking-[0.22em] text-slate">{label}</p>
+      <p className="mt-2 font-display text-3xl text-ink">{value}</p>
+      <p className="mt-2 text-sm leading-6 text-slate">{helper}</p>
+    </div>
+  );
+}
+
+function filterReservationQueue(
+  reservations: Reservation[],
+  quickFilter: ReservationHostFilter,
+  areaFilter: string,
+) {
+  const now = Date.now();
+  const nextServiceCutoff = now + 3 * 60 * 60 * 1000;
+
+  return reservations.filter((reservation) => {
+    const reservationTimestamp = new Date(reservation.reservationTime).getTime();
+    const matchesArea = areaFilter === 'ALL'
+      ? true
+      : areaFilter === '__ANY__'
+        ? reservation.requestedArea === null
+        : reservation.requestedArea === areaFilter;
+
+    if (!matchesArea) {
+      return false;
+    }
+
+    switch (quickFilter) {
+      case 'NEEDS_TABLE':
+        return reservation.status === 'CONFIRMED' && reservation.assignedTableId === null;
+      case 'NEXT_SERVICE':
+        return reservationTimestamp >= now && reservationTimestamp <= nextServiceCutoff;
+      case 'LARGE_PARTY':
+        return reservation.partySize >= 6;
+      case 'ALL':
+      default:
+        return true;
+    }
+  });
+}
+
+function summarizeReservationQueue(reservations: Reservation[]) {
+  const now = Date.now();
+  const nextServiceCutoff = now + 3 * 60 * 60 * 1000;
+
+  return reservations.reduce(
+    (summary, reservation) => {
+      const reservationTimestamp = new Date(reservation.reservationTime).getTime();
+      summary.total += 1;
+
+      if (reservation.status === 'CONFIRMED' && reservation.assignedTableId === null) {
+        summary.needsTable += 1;
+      }
+
+      if (reservation.partySize >= 6) {
+        summary.largeParty += 1;
+      }
+
+      if (reservationTimestamp >= now && reservationTimestamp <= nextServiceCutoff) {
+        summary.nextService += 1;
+      }
+
+      return summary;
+    },
+    { total: 0, needsTable: 0, largeParty: 0, nextService: 0 },
   );
 }
 

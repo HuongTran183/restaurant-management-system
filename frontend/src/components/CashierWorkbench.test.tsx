@@ -70,18 +70,19 @@ function renderWorkbench(overrides: Partial<ComponentProps<typeof CashierWorkben
       orderError={null}
       invoiceError={null}
       paymentError={null}
-    showOrderOperations
-    showBillingOperations
-    invoicePresenceByOrderId={{ 1: true }}
-    menuItems={[makeMenuItem()]}
-    onAddOrderItem={vi.fn()}
-    onConfirmOrder={onConfirmOrder}
-    onCancelOrder={onCancelOrder}
-    onCreateInvoice={onCreateInvoice}
-    onRecordPayment={onRecordPayment}
-    onUpdateOrderItem={vi.fn()}
-    {...overrides}
-  />,
+      showOrderOperations
+      showBillingOperations
+      invoicePresenceByOrderId={{ 1: true }}
+      menuItems={[makeMenuItem()]}
+      sessionLabelById={{ 11: 'T-01 • Table 01' }}
+      onAddOrderItem={vi.fn()}
+      onConfirmOrder={onConfirmOrder}
+      onCancelOrder={onCancelOrder}
+      onCreateInvoice={onCreateInvoice}
+      onRecordPayment={onRecordPayment}
+      onUpdateOrderItem={vi.fn()}
+      {...overrides}
+    />,
   );
 
   return { onConfirmOrder, onCancelOrder, onCreateInvoice, onRecordPayment };
@@ -214,5 +215,12 @@ describe('CashierWorkbench', () => {
     expect(screen.queryByText(/invoices and payments/i)).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: /add item/i })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /record payment/i })).not.toBeInTheDocument();
+  });
+
+  it('shows grouped session context above the order cards', () => {
+    renderWorkbench();
+
+    expect(screen.getByText(/session lane/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/t-01 • table 01/i)).not.toHaveLength(0);
   });
 });
