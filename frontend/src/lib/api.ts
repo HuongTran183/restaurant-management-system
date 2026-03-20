@@ -215,7 +215,9 @@ function buildQueryString(params: Record<string, QueryValue>): string {
   return queryString.length > 0 ? `?${queryString}` : '';
 }
 
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080').replace(/\/$/, '');
+// In dev (including e2e), ALWAYS prefer relative `/api` calls so Vite proxy can avoid CORS issues.
+// In production, fall back to a real backend URL.
+const API_BASE_URL = (import.meta.env.DEV ? '' : import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080').replace(/\/$/, '');
 
 class ApiError extends Error {
   status: number;

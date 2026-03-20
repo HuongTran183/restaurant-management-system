@@ -58,8 +58,8 @@ describe('FloorOverview', () => {
   it('shows walk-in controls for a free table with no live session', () => {
     render(<FloorOverview reservations={[]} sessions={[]} tables={[makeTable()]} />);
 
-    expect(screen.getByRole('button', { name: /seat walk-in/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /open session/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /cho khách vãng lai ngồi/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /mở ca/i })).toBeInTheDocument();
   });
 
   it('shows order and reservation shortcuts when a table is already engaged', () => {
@@ -71,8 +71,8 @@ describe('FloorOverview', () => {
       />,
     );
 
-    expect(screen.getByRole('button', { name: /open order flow/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /open reservation/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /close session/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /mở luồng đơn/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /mở đặt chỗ/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /đóng ca/i })).toBeInTheDocument();
   });
 });

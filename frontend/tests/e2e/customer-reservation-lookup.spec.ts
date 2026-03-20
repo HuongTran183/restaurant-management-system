@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { nextReservationDateTimeLocal } from './helpers';
 
-test('customer can create and cancel a reservation', async ({ page }) => {
+test('customer can create, lookup by code, and cancel reservation', async ({ page }) => {
   const unique = Date.now();
 
   // Force Vietnamese UI for deterministic selectors.
@@ -17,9 +17,10 @@ test('customer can create and cancel a reservation', async ({ page }) => {
   });
   await page.reload();
 
-  await page.getByLabel('Họ tên').fill(`Guest ${unique}`);
+  // Create
+  await page.getByLabel('Họ tên').fill(`Lookup Guest ${unique}`);
   await page.getByLabel('Điện thoại').fill(`09${String(unique).slice(-8)}`);
-  await page.getByLabel('Email').fill(`guest${unique}@example.com`);
+  await page.getByLabel('Email').fill(`lookup${unique}@example.com`);
   await page.getByLabel('Số lượng khách').fill('3');
   await page.getByLabel('Thời gian đến').fill(nextReservationDateTimeLocal());
   await page.getByLabel('Khu vực ưu tiên').fill('Demo Hall');
@@ -29,8 +30,23 @@ test('customer can create and cancel a reservation', async ({ page }) => {
   await expect(page.getByText(/RES-/)).toBeVisible();
   await expect(page.getByText(/Đang chờ/i)).toBeVisible();
 
-  await page.getByLabel('Ghi chú hủy').fill('Plan changed');
-  await page.getByRole('button', { name: /hủy đặt chỗ/i }).click();
+  const codeField = page.getByPlaceholder('RES-XXXX');
+  await expect(codeField).toHaveValue(/RES-/);
+  const reservationCode = await codeField.inputValue();
+  expect(reservationCode).toMatch(/^RES-/);
 
+  // Reload + Lookup
+  await page.reload();
+
+  await expect(page.getByLabel('Họ tên')).toBeVisible();
+  await codeField.fill(reservationCode);
+  await page.getByRole('button', { name: /tìm/i }).click();
+
+  await expect(page.getByText(/Đang chờ/i)).toBeVisible();
+
+  // Cancel
+  await page.getByLabel('Ghi chú hủy').fill(`Lookup cancel ${unique}`);
+  await page.getByRole('button', { name: /hủy đặt chỗ/i }).click();
   await expect(page.getByText(/Đã hủy/i)).toBeVisible();
 });
+

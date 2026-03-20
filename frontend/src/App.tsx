@@ -23,6 +23,7 @@ import {
 import { CashierWorkbench } from './components/CashierWorkbench';
 import { FloorOverview, type FloorOverviewActionState } from './components/FloorOverview';
 import { clearSession, msUntilSessionRefresh, readSession, saveSession, shouldRefreshSession } from './lib/session';
+import i18n from './i18n/i18n';
 
 const initialSession = typeof window === 'undefined' ? null : readSession();
 
@@ -157,33 +158,36 @@ function HomePage() {
         <div className="grid gap-8 lg:grid-cols-[1.05fr_0.95fr] lg:items-end">
           <div className="space-y-5">
             <span className="inline-flex rounded-full border border-forest/15 bg-forest/5 px-4 py-1 text-xs font-bold uppercase tracking-[0.25em] text-forest">
-              Floor control without the clipboard chaos
+              {i18n.t('Floor control without the clipboard chaos')}
             </span>
             <h1 className="font-display text-4xl leading-tight text-ink sm:text-5xl">
-              A restaurant cockpit for the dining room, the QR table, and the host desk.
+              {i18n.t('A restaurant cockpit for the dining room, the QR table, and the host desk.')}
             </h1>
             <p className="max-w-2xl text-lg leading-8 text-slate">
-              The backend is now wired for public menu browsing, QR orders, service requests, and reservation workflows.
-              This frontend gives the team one place to demo those flows end-to-end.
+              {i18n.t(
+                'The backend is now wired for public menu browsing, QR orders, service requests, and reservation workflows. This frontend gives the team one place to demo those flows end-to-end.',
+              )}
             </p>
             <div className="flex flex-wrap gap-3">
               <Link className="button-primary" to="/book">
-                Book a table
+                {i18n.t('Book a table')}
               </Link>
               <Link className="button-secondary" to="/staff/login">
-                Staff console
+                {i18n.t('Staff console')}
               </Link>
             </div>
           </div>
 
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-1">
-            <MetricCard label="Categories" value={String(menuQuery.data?.categories.length ?? 0)} tone="forest" />
-            <MetricCard label="Live dishes" value={String(menuQuery.data?.items.length ?? 0)} tone="ember" />
+            <MetricCard label={i18n.t('Categories')} value={String(menuQuery.data?.categories.length ?? 0)} tone="forest" />
+            <MetricCard label={i18n.t('Live dishes')} value={String(menuQuery.data?.items.length ?? 0)} tone="ember" />
             <div className="rounded-[28px] border border-ink/10 bg-white/70 p-5">
               <p className="text-xs font-bold uppercase tracking-[0.24em] text-slate">API health</p>
-              <p className="mt-3 font-display text-2xl text-ink">{menuQuery.data?.restaurantName ?? 'Connecting...'}</p>
+              <p className="mt-3 font-display text-2xl text-ink">{menuQuery.data?.restaurantName ?? i18n.t('Connecting...')}</p>
               <p className="mt-2 text-sm leading-6 text-slate">
-                Public menu endpoint: {menuQuery.isSuccess ? 'connected' : menuQuery.isPending ? 'loading' : 'needs backend'}.
+                {i18n.t('Public menu endpoint: {{state}}.', {
+                  state: menuQuery.isSuccess ? i18n.t('connected') : menuQuery.isPending ? i18n.t('loading') : i18n.t('needs backend'),
+                })}
               </p>
             </div>
           </div>
@@ -193,22 +197,30 @@ function HomePage() {
       <aside className="panel px-6 py-8 sm:px-8">
         <div className="space-y-5">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.24em] text-slate">Demo shortcuts</p>
-            <h2 className="mt-2 font-display text-3xl text-ink">Try the MVP loops</h2>
+            <p className="text-xs font-bold uppercase tracking-[0.24em] text-slate">{i18n.t('Demo shortcuts')}</p>
+            <h2 className="mt-2 font-display text-3xl text-ink">{i18n.t('Try the MVP loops')}</h2>
           </div>
           <div className="grid gap-4">
             <ShortcutCard
-              title="Public booking"
-              body="Create, lookup, and cancel a reservation through the same public contract the mobile site will use."
+              title={i18n.t('Public booking')}
+              body={i18n.t(
+                'Create, lookup, and cancel a reservation through the same public contract the mobile site will use.',
+              )}
               to="/book"
             />
             <ShortcutCard
-              title="Staff dashboard"
-              body="Login with the seeded admin account and inspect orders, reservations, service requests, invoices, and payments."
+              title={i18n.t('Staff dashboard')}
+              body={i18n.t(
+                'Login with the seeded admin account and inspect orders, reservations, service requests, invoices, and payments.',
+              )}
               to="/staff/login"
             />
             <div className="rounded-[28px] border border-dashed border-forest/25 bg-forest/5 p-5 text-sm leading-7 text-slate">
-              For the QR flow, seed a table, menu items, and a QR entry first; generated QR landing URLs should point at <code>/qr/&lt;token&gt;</code>.
+              {i18n.t(
+                'For the QR flow, seed a table, menu items, and a QR entry first; generated QR landing URLs should point at',
+              )}
+              {' '}
+              <code>/qr/&lt;token&gt;</code>.
             </div>
           </div>
         </div>
@@ -217,21 +229,21 @@ function HomePage() {
       <section className="panel px-6 py-8 sm:px-8 lg:col-span-2">
         <div className="flex flex-col gap-4 border-b border-ink/10 pb-5 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.24em] text-slate">Public menu</p>
-            <h2 className="mt-2 font-display text-3xl text-ink">Signature dishes ready for QR ordering</h2>
+            <p className="text-xs font-bold uppercase tracking-[0.24em] text-slate">{i18n.t('Public menu')}</p>
+            <h2 className="mt-2 font-display text-3xl text-ink">{i18n.t('Signature dishes ready for QR ordering')}</h2>
           </div>
           <label className="relative block lg:w-[22rem]">
-            <span className="mb-2 block text-xs font-bold uppercase tracking-[0.24em] text-slate">Search</span>
+            <span className="mb-2 block text-xs font-bold uppercase tracking-[0.24em] text-slate">{i18n.t('Search')}</span>
             <input
               className="field"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search for dishes or categories"
+              placeholder={i18n.t('Search for dishes or categories')}
             />
           </label>
         </div>
 
-        {menuQuery.isLoading ? <LoadingState label="Loading menu" /> : null}
+        {menuQuery.isLoading ? <LoadingState label={i18n.t('Loading menu')} /> : null}
         {menuQuery.error ? <ErrorState error={menuQuery.error} /> : null}
 
         {menuQuery.data ? (
@@ -240,7 +252,9 @@ function HomePage() {
               {menuQuery.data.categories.map((category) => (
                 <div key={category.id} className="rounded-[22px] border border-ink/10 bg-white/65 px-4 py-3">
                   <p className="font-semibold text-ink">{category.name}</p>
-                  <p className="text-sm leading-6 text-slate">{category.description || 'A curated station for the dining room.'}</p>
+                  <p className="text-sm leading-6 text-slate">
+                    {category.description || i18n.t('A curated station for the dining room.')}
+                  </p>
                 </div>
               ))}
             </div>
@@ -254,7 +268,9 @@ function HomePage() {
                     </div>
                     <span className="rounded-full bg-sun/30 px-3 py-1 text-sm font-semibold text-forest">{formatMoney(item.price)}</span>
                   </div>
-                  <p className="mt-4 text-sm leading-7 text-slate">{item.description || 'Built for quick service, QR browsing, and direct cashier handoff.'}</p>
+                  <p className="mt-4 text-sm leading-7 text-slate">
+                    {item.description || i18n.t('Built for quick service, QR browsing, and direct cashier handoff.')}
+                  </p>
                 </article>
               ))}
               {!filteredItems.length ? (
@@ -308,7 +324,7 @@ function ReservationPage() {
   });
 
   const cancelReservationMutation = useMutation({
-    mutationFn: () => publicApi.cancelReservation(activeLookup, cancelNote || 'Cancelled from public app'),
+    mutationFn: () => publicApi.cancelReservation(activeLookup, cancelNote || i18n.t('Cancelled from public app')),
     onSuccess: () => {
       void lookupQuery.refetch();
     },
@@ -322,38 +338,44 @@ function ReservationPage() {
   return (
     <div className="grid gap-8 lg:grid-cols-[1.05fr_0.95fr]">
       <section className="panel px-6 py-8 sm:px-8">
-        <p className="text-xs font-bold uppercase tracking-[0.24em] text-slate">Public booking flow</p>
-        <h1 className="mt-3 font-display text-4xl text-ink">Reserve a table without calling the host stand.</h1>
+        <p className="text-xs font-bold uppercase tracking-[0.24em] text-slate">{i18n.t('Public booking flow')}</p>
+        <h1 className="mt-3 font-display text-4xl text-ink">{i18n.t('Reserve a table without calling the host stand.')}</h1>
         <p className="mt-4 max-w-2xl text-base leading-8 text-slate">
-          This screen speaks directly to the new public reservation endpoints: create a reservation, pull it back by code,
-          and cancel it when plans change.
+          {i18n.t(
+            'This screen speaks directly to the new public reservation endpoints: create a reservation, pull it back by code, and cancel it when plans change.',
+          )}
         </p>
 
         <form className="mt-8 grid gap-4 md:grid-cols-2" onSubmit={submitReservation}>
-          <Field label="Guest name">
+          <Field label={i18n.t('Guest name')}>
             <input className="field" required value={form.customerName} onChange={(event) => setForm({ ...form, customerName: event.target.value })} />
           </Field>
-          <Field label="Phone">
+          <Field label={i18n.t('Phone')}>
             <input className="field" required value={form.phone} onChange={(event) => setForm({ ...form, phone: event.target.value })} />
           </Field>
-          <Field label="Email">
+          <Field label={i18n.t('Email')}>
             <input className="field" type="email" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} />
           </Field>
-          <Field label="Party size">
+          <Field label={i18n.t('Party size')}>
             <input className="field" min="1" type="number" value={form.partySize} onChange={(event) => setForm({ ...form, partySize: event.target.value })} />
           </Field>
-          <Field label="Arrival time">
+          <Field label={i18n.t('Arrival time')}>
             <input className="field" required type="datetime-local" value={form.reservationTime} onChange={(event) => setForm({ ...form, reservationTime: event.target.value })} />
           </Field>
-          <Field label="Preferred area">
-            <input className="field" value={form.requestedArea} onChange={(event) => setForm({ ...form, requestedArea: event.target.value })} placeholder="Patio, bar, private room..." />
+          <Field label={i18n.t('Preferred area')}>
+            <input
+              className="field"
+              value={form.requestedArea}
+              onChange={(event) => setForm({ ...form, requestedArea: event.target.value })}
+              placeholder={i18n.t('Patio, bar, private room...')}
+            />
           </Field>
-          <Field label="Notes" className="md:col-span-2">
+          <Field label={i18n.t('Notes')} className="md:col-span-2">
             <textarea className="field min-h-28" value={form.note} onChange={(event) => setForm({ ...form, note: event.target.value })} />
           </Field>
           <div className="md:col-span-2 flex flex-wrap items-center gap-3 pt-2">
             <button className="button-primary" disabled={createReservationMutation.isPending} type="submit">
-              {createReservationMutation.isPending ? 'Creating...' : 'Create reservation'}
+              {createReservationMutation.isPending ? i18n.t('Creating...') : i18n.t('Create reservation')}
             </button>
             {createReservationMutation.error ? <InlineError error={createReservationMutation.error} /> : null}
           </div>
@@ -361,16 +383,21 @@ function ReservationPage() {
       </section>
 
       <section className="panel px-6 py-8 sm:px-8">
-        <p className="text-xs font-bold uppercase tracking-[0.24em] text-slate">Lookup and cancel</p>
-        <h2 className="mt-3 font-display text-3xl text-ink">Keep the code, manage the booking.</h2>
+        <p className="text-xs font-bold uppercase tracking-[0.24em] text-slate">{i18n.t('Lookup and cancel')}</p>
+        <h2 className="mt-3 font-display text-3xl text-ink">{i18n.t('Keep the code, manage the booking.')}</h2>
         <div className="mt-6 flex gap-3">
-          <input className="field" value={lookupInput} onChange={(event) => setLookupInput(event.target.value.toUpperCase())} placeholder="RES-XXXX" />
+          <input
+            className="field"
+            value={lookupInput}
+            onChange={(event) => setLookupInput(event.target.value.toUpperCase())}
+            placeholder={i18n.t('RES-XXXX')}
+          />
           <button className="button-secondary" onClick={() => setActiveLookup(lookupInput.trim())} type="button">
-            Find
+            {i18n.t('Find')}
           </button>
         </div>
 
-        {lookupQuery.isLoading ? <LoadingState label="Looking up reservation" /> : null}
+        {lookupQuery.isLoading ? <LoadingState label={i18n.t('Looking up reservation')} /> : null}
         {lookupQuery.error ? <ErrorState error={lookupQuery.error} /> : null}
 
         {lookupQuery.data ? (
@@ -381,17 +408,17 @@ function ReservationPage() {
                 <h3 className="mt-2 font-display text-2xl text-ink">{lookupQuery.data.customerName}</h3>
               </div>
               <StatusPill tone={lookupQuery.data.status === 'CANCELLED' ? 'warm' : lookupQuery.data.status === 'COMPLETED' ? 'neutral' : 'forest'}>
-                {lookupQuery.data.status}
+                {i18n.t(lookupQuery.data.status)}
               </StatusPill>
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
-              <InfoPair label="Arrival" value={formatDateTime(lookupQuery.data.reservationTime)} />
-              <InfoPair label="Party" value={`${lookupQuery.data.partySize} guests`} />
-              <InfoPair label="Phone" value={lookupQuery.data.phone} />
-              <InfoPair label="Requested area" value={lookupQuery.data.requestedArea || 'No preference'} />
+              <InfoPair label={i18n.t('Arrival')} value={formatDateTime(lookupQuery.data.reservationTime)} />
+              <InfoPair label={i18n.t('Party')} value={`${lookupQuery.data.partySize} ${i18n.t('guests')}`} />
+              <InfoPair label={i18n.t('Phone')} value={lookupQuery.data.phone} />
+              <InfoPair label={i18n.t('Requested area')} value={lookupQuery.data.requestedArea || i18n.t('No preference')} />
             </div>
             <label className="block">
-              <span className="mb-2 block text-xs font-bold uppercase tracking-[0.24em] text-slate">Cancel note</span>
+              <span className="mb-2 block text-xs font-bold uppercase tracking-[0.24em] text-slate">{i18n.t('Cancel note')}</span>
               <textarea className="field min-h-24" value={cancelNote} onChange={(event) => setCancelNote(event.target.value)} />
             </label>
             <div className="flex flex-wrap items-center gap-3">
@@ -401,7 +428,7 @@ function ReservationPage() {
                 onClick={() => cancelReservationMutation.mutate()}
                 type="button"
               >
-                {cancelReservationMutation.isPending ? 'Cancelling...' : 'Cancel reservation'}
+                {cancelReservationMutation.isPending ? i18n.t('Cancelling...') : i18n.t('Cancel reservation')}
               </button>
               {cancelReservationMutation.error ? <InlineError error={cancelReservationMutation.error} /> : null}
             </div>
@@ -450,7 +477,10 @@ function QrExperiencePage() {
       publicApi.requestService(token, {
         orderCode: activeOrderCode || undefined,
         requestType,
-        note: requestType === 'REQUEST_BILL' ? 'Customer requested the bill from QR flow' : 'Customer requested assistance from QR flow',
+        note:
+          requestType === 'REQUEST_BILL'
+            ? i18n.t('Customer requested the bill from QR flow')
+            : i18n.t('Customer requested assistance from QR flow'),
       }),
   });
 
@@ -463,27 +493,33 @@ function QrExperiencePage() {
       <section className="panel px-6 py-8 sm:px-8">
         <div className="flex flex-col gap-5 border-b border-ink/10 pb-5 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.24em] text-slate">QR dining</p>
-            <h1 className="mt-2 font-display text-4xl text-ink">Table-side ordering, without waiting for a paper pad.</h1>
+            <p className="text-xs font-bold uppercase tracking-[0.24em] text-slate">{i18n.t('QR dining')}</p>
+            <h1 className="mt-2 font-display text-4xl text-ink">{i18n.t('Table-side ordering, without waiting for a paper pad.')}</h1>
             <p className="mt-3 max-w-2xl text-base leading-8 text-slate">
-              Resolve the QR token, open a table session on first interaction, stack dishes into the active QR order, then call for service or the bill.
+              {i18n.t(
+                'Resolve the QR token, open a table session on first interaction, stack dishes into the active QR order, then call for service or the bill.',
+              )}
             </p>
           </div>
           <label className="block lg:w-[20rem]">
-            <span className="mb-2 block text-xs font-bold uppercase tracking-[0.24em] text-slate">Filter dishes</span>
-            <input className="field" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Find noodles, tea, desserts..." />
+            <span className="mb-2 block text-xs font-bold uppercase tracking-[0.24em] text-slate">{i18n.t('Filter dishes')}</span>
+            <input className="field" value={search} onChange={(event) => setSearch(event.target.value)} placeholder={i18n.t('Find noodles, tea, desserts...')} />
           </label>
         </div>
 
-        {tableQuery.isLoading || menuQuery.isLoading ? <LoadingState label="Loading QR menu" /> : null}
+        {tableQuery.isLoading || menuQuery.isLoading ? <LoadingState label={i18n.t('Loading QR menu')} /> : null}
         {tableQuery.error ? <ErrorState error={tableQuery.error} /> : null}
         {menuQuery.error ? <ErrorState error={menuQuery.error} /> : null}
 
         {tableQuery.data ? (
           <div className="mt-6 grid gap-4 md:grid-cols-3">
-            <InfoCard label="Table" value={tableQuery.data.tableName} detail={tableQuery.data.tableCode} />
-            <InfoCard label="Area" value={tableQuery.data.areaName} detail={tableQuery.data.tableStatus} />
-            <InfoCard label="Session" value={tableQuery.data.openTableSessionId ? `#${tableQuery.data.openTableSessionId}` : 'Will open on first order'} detail="Auto-opened on demand" />
+            <InfoCard label={i18n.t('Table')} value={tableQuery.data.tableName} detail={tableQuery.data.tableCode} />
+            <InfoCard label={i18n.t('Area')} value={tableQuery.data.areaName} detail={tableQuery.data.tableStatus} />
+            <InfoCard
+              label={i18n.t('Session')}
+              value={tableQuery.data.openTableSessionId ? `#${tableQuery.data.openTableSessionId}` : i18n.t('Will open on first order')}
+              detail={i18n.t('Auto-opened on demand')}
+            />
           </div>
         ) : null}
 
@@ -499,7 +535,7 @@ function QrExperiencePage() {
                   </div>
                   <span className="rounded-full bg-sun/30 px-3 py-1 text-sm font-semibold text-forest">{formatMoney(item.price)}</span>
                 </div>
-                <p className="mt-4 text-sm leading-7 text-slate">{item.description || 'Built for quick table-side ordering.'}</p>
+                <p className="mt-4 text-sm leading-7 text-slate">{item.description || i18n.t('Built for quick table-side ordering.')}</p>
                 <div className="mt-5 flex items-center justify-between gap-3 rounded-[20px] border border-ink/10 bg-cream/70 px-3 py-2">
                   <button className="counter-button" onClick={() => setQuantities({ ...quantities, [item.id]: Math.max(0, quantity - 1) })} type="button">
                     -
@@ -517,8 +553,8 @@ function QrExperiencePage() {
 
       <aside className="panel sticky top-24 flex h-fit flex-col gap-5 px-5 py-6">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[0.24em] text-slate">Current cart</p>
-          <h2 className="mt-2 font-display text-3xl text-ink">Ready for the kitchen</h2>
+          <p className="text-xs font-bold uppercase tracking-[0.24em] text-slate">{i18n.t('Current cart')}</p>
+          <h2 className="mt-2 font-display text-3xl text-ink">{i18n.t('Ready for the kitchen')}</h2>
         </div>
 
         <div className="space-y-3">
@@ -533,36 +569,45 @@ function QrExperiencePage() {
             ))
           ) : (
             <div className="rounded-[22px] border border-dashed border-ink/15 bg-white/60 px-4 py-5 text-sm leading-7 text-slate">
-              Add items to the cart to create or extend the QR order.
+              {i18n.t('Add items to the cart to create or extend the QR order.')}
             </div>
           )}
         </div>
 
         <label className="block">
-          <span className="mb-2 block text-xs font-bold uppercase tracking-[0.24em] text-slate">Order note</span>
-          <textarea className="field min-h-28" value={note} onChange={(event) => setNote(event.target.value)} placeholder="Less spicy, split plates, no peanuts..." />
+          <span className="mb-2 block text-xs font-bold uppercase tracking-[0.24em] text-slate">{i18n.t('Order note')}</span>
+          <textarea
+            className="field min-h-28"
+            value={note}
+            onChange={(event) => setNote(event.target.value)}
+            placeholder={i18n.t('Less spicy, split plates, no peanuts...')}
+          />
         </label>
 
         <button className="button-primary w-full justify-center" disabled={!cartItems.length || submitOrderMutation.isPending} onClick={() => submitOrderMutation.mutate()} type="button">
-          {submitOrderMutation.isPending ? 'Sending...' : 'Send QR order'}
+          {submitOrderMutation.isPending ? i18n.t('Sending...') : i18n.t('Send QR order')}
         </button>
         {submitOrderMutation.error ? <InlineError error={submitOrderMutation.error} /> : null}
 
         {currentOrder ? (
           <div className="rounded-[24px] bg-forest p-5 text-cream shadow-float">
-            <p className="text-xs font-bold uppercase tracking-[0.24em] text-cream/70">Active order</p>
+            <p className="text-xs font-bold uppercase tracking-[0.24em] text-cream/70">{i18n.t('Active order')}</p>
             <p className="mt-2 font-display text-2xl">{currentOrder.orderCode}</p>
-            <p className="mt-2 text-sm text-cream/80">Status: {currentOrder.status}</p>
-            <p className="mt-4 text-sm text-cream/80">Total: {formatMoney(currentOrder.totalAmount)}</p>
+            <p className="mt-2 text-sm text-cream/80">
+              {i18n.t('Status:')} {i18n.t(currentOrder.status)}
+            </p>
+            <p className="mt-4 text-sm text-cream/80">
+              {i18n.t('Total:')} {formatMoney(currentOrder.totalAmount)}
+            </p>
             <div className="mt-5 grid gap-3">
               <button className="button-ghost-light" onClick={() => serviceRequestMutation.mutate('CALL_WAITER')} type="button">
-                Call waiter
+                {i18n.t('Call waiter')}
               </button>
               <button className="button-ghost-light" onClick={() => serviceRequestMutation.mutate('REQUEST_BILL')} type="button">
-                Request bill
+                {i18n.t('Request bill')}
               </button>
             </div>
-            {serviceRequestMutation.isSuccess ? <p className="mt-4 text-sm text-cream/80">Service request sent.</p> : null}
+            {serviceRequestMutation.isSuccess ? <p className="mt-4 text-sm text-cream/80">{i18n.t('Service request sent.')}</p> : null}
             {serviceRequestMutation.error ? <InlineError error={serviceRequestMutation.error} light /> : null}
           </div>
         ) : null}
@@ -596,10 +641,10 @@ function StaffLoginPage({
 
   return (
     <section className="panel mx-auto max-w-xl px-6 py-8 sm:px-8">
-      <p className="text-xs font-bold uppercase tracking-[0.24em] text-slate">Staff access</p>
-      <h1 className="mt-3 font-display text-4xl text-ink">Sign in to the floor console.</h1>
+      <p className="text-xs font-bold uppercase tracking-[0.24em] text-slate">{i18n.t('Staff access')}</p>
+      <h1 className="mt-3 font-display text-4xl text-ink">{i18n.t('Sign in to the floor console.')}</h1>
       <p className="mt-4 text-base leading-8 text-slate">
-        Use the seeded admin account to review the new staff-facing list endpoints from the browser.
+        {i18n.t('Use the seeded admin account to review the new staff-facing list endpoints from the browser.')}
       </p>
 
       <form
@@ -609,15 +654,15 @@ function StaffLoginPage({
           loginMutation.mutate();
         }}
       >
-        <Field label="Username">
+        <Field label={i18n.t('Username')}>
           <input className="field" value={form.username} onChange={(event) => setForm({ ...form, username: event.target.value })} />
         </Field>
-        <Field label="Password">
+        <Field label={i18n.t('Password')}>
           <input className="field" type="password" value={form.password} onChange={(event) => setForm({ ...form, password: event.target.value })} />
         </Field>
         <div className="flex items-center gap-3">
           <button className="button-primary" disabled={loginMutation.isPending} type="submit">
-            {loginMutation.isPending ? 'Signing in...' : 'Open staff dashboard'}
+            {loginMutation.isPending ? i18n.t('Signing in...') : i18n.t('Open staff dashboard')}
           </button>
           {loginMutation.error ? <InlineError error={loginMutation.error} /> : null}
         </div>
@@ -682,15 +727,15 @@ function StaffDashboardPage({
   const activeLaneTitle = describeWorkspaceLane(workspaceLane, canManageFloor, canManageBilling);
   const activeLaneBody = describeWorkspaceLaneBody(workspaceLane, canManageFloor, canManageBilling);
   const workbenchTitle = showFloorLane && showBillingLane
-    ? 'Operations workbench'
+    ? i18n.t('Operations workbench')
     : showFloorLane
-      ? 'Floor workbench'
-      : 'Billing workbench';
+      ? i18n.t('Floor workbench')
+      : i18n.t('Billing workbench');
   const workbenchSubtitle = showFloorLane && showBillingLane
-    ? 'Handle order confirmations and billing actions from one surface.'
+    ? i18n.t('Handle order confirmations and billing actions from one surface.')
     : showFloorLane
-      ? 'Keep dine-in tickets, sessions, and floor follow-up moving from one place.'
-      : 'Collect payment, reconcile invoices, and close the cashier loop from one place.';
+      ? i18n.t('Keep dine-in tickets, sessions, and floor follow-up moving from one place.')
+      : i18n.t('Collect payment, reconcile invoices, and close the cashier loop from one place.');
 
   useEffect(() => {
     setWorkspaceLane((current) => {
@@ -1148,8 +1193,10 @@ function StaffDashboardPage({
       <section className="panel overflow-hidden px-6 py-8 sm:px-8">
         <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.24em] text-slate">Staff workspace</p>
-            <h1 className="mt-3 font-display text-4xl text-ink">Welcome back, {session?.user.fullName}.</h1>
+            <p className="text-xs font-bold uppercase tracking-[0.24em] text-slate">{i18n.t('Staff workspace')}</p>
+            <h1 className="mt-3 font-display text-4xl text-ink">
+              {i18n.t('Welcome back, {{name}}.', { name: session?.user.fullName })}
+            </h1>
             <p className="mt-4 max-w-2xl text-base leading-8 text-slate">
               {activeLaneBody}
             </p>
@@ -1161,7 +1208,7 @@ function StaffDashboardPage({
           </div>
           <div className="space-y-3">
             <div className="rounded-[24px] border border-ink/10 bg-white/70 px-4 py-4">
-              <p className="text-xs font-bold uppercase tracking-[0.24em] text-slate">Active lane</p>
+              <p className="text-xs font-bold uppercase tracking-[0.24em] text-slate">{i18n.t('Active lane')}</p>
               <p className="mt-2 font-semibold text-ink">{activeLaneTitle}</p>
               {showLaneSwitcher ? (
                 <div className="mt-3 inline-flex flex-wrap rounded-full border border-ink/10 bg-cream/70 p-1">
@@ -1175,7 +1222,11 @@ function StaffDashboardPage({
                       onClick={() => setWorkspaceLane(lane)}
                       type="button"
                     >
-                      {lane === 'ALL' ? 'All lanes' : lane === 'FLOOR' ? 'Floor lane' : 'Billing lane'}
+                      {lane === 'ALL'
+                        ? i18n.t('All lanes')
+                        : lane === 'FLOOR'
+                          ? i18n.t('Floor lane')
+                          : i18n.t('Billing lane')}
                     </button>
                   ))}
                 </div>
@@ -1184,42 +1235,46 @@ function StaffDashboardPage({
 
             <div className="flex flex-wrap gap-3">
               <button className="button-secondary" onClick={refreshWorkspace} type="button">
-                Refresh workspace
+                {i18n.t('Refresh workspace')}
               </button>
               <button className="button-secondary" onClick={onLogout} type="button">
-                Log out
+                {i18n.t('Log out')}
               </button>
             </div>
           </div>
         </div>
       </section>
 
-      {dashboardQuery.isLoading ? <LoadingState label="Loading dashboard summary" /> : null}
+      {dashboardQuery.isLoading ? <LoadingState label={i18n.t('Loading dashboard summary')} /> : null}
       {dashboardQuery.error ? <ErrorState error={dashboardQuery.error} /> : null}
 
       {dashboardQuery.data ? (
         <section className={clsx('grid gap-4 md:grid-cols-2', showFloorLane && showBillingLane ? 'xl:grid-cols-5' : showFloorLane ? 'xl:grid-cols-3' : 'xl:grid-cols-2')}>
-          {showFloorLane ? <MetricCard label="Orders" value={String(dashboardQuery.data.orders.totalElements)} tone="forest" /> : null}
-          {showFloorLane ? <MetricCard label="Reservations" value={String(dashboardQuery.data.reservations.totalElements)} tone="ember" /> : null}
-          {showFloorLane ? <MetricCard label="Service requests" value={String(dashboardQuery.data.serviceRequests.totalElements)} tone="slate" /> : null}
-          {showBillingLane ? <MetricCard label="Invoices" value={String(dashboardQuery.data.invoices.totalElements)} tone="forest" /> : null}
-          {showBillingLane ? <MetricCard label="Payments" value={String(dashboardQuery.data.payments.totalElements)} tone="ember" /> : null}
+          {showFloorLane ? <MetricCard label={i18n.t('Orders')} value={String(dashboardQuery.data.orders.totalElements)} tone="forest" /> : null}
+          {showFloorLane ? <MetricCard label={i18n.t('Reservations')} value={String(dashboardQuery.data.reservations.totalElements)} tone="ember" /> : null}
+          {showFloorLane ? <MetricCard label={i18n.t('Service requests')} value={String(dashboardQuery.data.serviceRequests.totalElements)} tone="slate" /> : null}
+          {showBillingLane ? <MetricCard label={i18n.t('Invoices')} value={String(dashboardQuery.data.invoices.totalElements)} tone="forest" /> : null}
+          {showBillingLane ? <MetricCard label={i18n.t('Payments')} value={String(dashboardQuery.data.payments.totalElements)} tone="ember" /> : null}
         </section>
       ) : null}
 
       {!showFloorLane && !showBillingLane ? (
         <section className="panel px-6 py-8 sm:px-8">
-          <EmptyMessage message="No workspace sections are available for the current role." />
+          <EmptyMessage message={i18n.t('No workspace sections are available for the current role.')} />
         </section>
       ) : null}
 
       {showFloorLane ? (
-        <DataPanel testId="floor-overview-panel" title="Floor overview" subtitle="Scan the room by table, session, and active reservation before making seating moves.">
-          {floorTablesQuery.isLoading ? <LoadingState label="Loading floor tables" /> : null}
+        <DataPanel
+          testId="floor-overview-panel"
+          title={i18n.t('Floor overview')}
+          subtitle={i18n.t('Scan the room by table, session, and active reservation before making seating moves.')}
+        >
+          {floorTablesQuery.isLoading ? <LoadingState label={i18n.t('Loading floor tables')} /> : null}
           {floorTablesQuery.error ? <ErrorState error={floorTablesQuery.error} /> : null}
-          {tableSessionsQuery.isLoading ? <LoadingState label="Loading table sessions" /> : null}
+          {tableSessionsQuery.isLoading ? <LoadingState label={i18n.t('Loading table sessions')} /> : null}
           {tableSessionsQuery.error ? <ErrorState error={tableSessionsQuery.error} /> : null}
-          {floorReservationsQuery.isLoading ? <LoadingState label="Loading active reservations" /> : null}
+          {floorReservationsQuery.isLoading ? <LoadingState label={i18n.t('Loading active reservations')} /> : null}
           {floorReservationsQuery.error ? <ErrorState error={floorReservationsQuery.error} /> : null}
           {floorActionMutation.error ? <div className="mt-4"><InlineError error={floorActionMutation.error} /></div> : null}
           {floorTablesQuery.data && tableSessionsQuery.data && floorReservationsQuery.data ? (
@@ -1242,7 +1297,11 @@ function StaffDashboardPage({
         {showFloorLane ? (
           <>
             <div ref={reservationPanelRef}>
-              <DataPanel testId="reservation-queue-panel" title="Reservation queue" subtitle="Confirm, seat, and complete reservations directly from the staff surface.">
+              <DataPanel
+                testId="reservation-queue-panel"
+                title={i18n.t('Reservation queue')}
+                subtitle={i18n.t('Confirm, seat, and complete reservations directly from the staff surface.')}
+              >
                 <div className="mb-5 grid gap-3 md:grid-cols-[auto_1fr_auto] md:items-end">
                   <div className="inline-flex rounded-full border border-ink/10 bg-white/80 p-1">
                     {(['ACTIVE', 'HISTORY', 'ALL'] as ReservationQueueScope[]).map((scope) => (
@@ -1255,17 +1314,23 @@ function StaffDashboardPage({
                         onClick={() => setReservationQueueScope(scope)}
                         type="button"
                       >
-                        {scope === 'ACTIVE' ? 'Active' : scope === 'HISTORY' ? 'History' : 'All'}
+                        {scope === 'ACTIVE'
+                          ? i18n.t('Active')
+                          : scope === 'HISTORY'
+                            ? i18n.t('History')
+                            : i18n.t('All')}
                       </button>
                     ))}
                   </div>
 
                   <label className="block">
-                    <span className="mb-2 block text-xs font-bold uppercase tracking-[0.24em] text-slate">Search reservations</span>
+                    <span className="mb-2 block text-xs font-bold uppercase tracking-[0.24em] text-slate">
+                      {i18n.t('Search reservations')}
+                    </span>
                     <input
                       className="field"
                       onChange={(event) => setReservationSearch(event.target.value)}
-                      placeholder="Code, customer, or phone"
+                      placeholder={i18n.t('Code, customer, or phone')}
                       value={reservationSearch}
                     />
                   </label>
@@ -1281,17 +1346,17 @@ function StaffDashboardPage({
                     }}
                     type="button"
                   >
-                    Clear filters
+                    {i18n.t('Clear filters')}
                   </button>
                 </div>
 
                 <div className="mb-5 grid gap-3 xl:grid-cols-[1.2fr_16rem]">
                   <div className="flex flex-wrap gap-2">
                     {([
-                      ['ALL', 'All arrivals'],
-                      ['NEEDS_TABLE', 'Need table'],
-                      ['NEXT_SERVICE', 'Next 3h'],
-                      ['LARGE_PARTY', 'Large party'],
+                      ['ALL', i18n.t('All arrivals')],
+                      ['NEEDS_TABLE', i18n.t('Need table')],
+                      ['NEXT_SERVICE', i18n.t('Next 3h')],
+                      ['LARGE_PARTY', i18n.t('Large party')],
                     ] as Array<[ReservationHostFilter, string]>).map(([filterKey, label]) => (
                       <button
                         key={filterKey}
@@ -1308,14 +1373,16 @@ function StaffDashboardPage({
                   </div>
 
                   <label className="block">
-                    <span className="mb-2 block text-xs font-bold uppercase tracking-[0.24em] text-slate">Area focus</span>
+                    <span className="mb-2 block text-xs font-bold uppercase tracking-[0.24em] text-slate">
+                      {i18n.t('Area focus')}
+                    </span>
                     <select
                       className="field"
                       onChange={(event) => setReservationAreaFilter(event.target.value)}
                       value={reservationAreaFilter}
                     >
-                      <option value="ALL">All areas</option>
-                      <option value="__ANY__">Any area</option>
+                      <option value="ALL">{i18n.t('All areas')}</option>
+                      <option value="__ANY__">{i18n.t('Any area')}</option>
                       {reservationAreaOptions.map((area) => (
                         <option key={area} value={area}>
                           {area}
@@ -1326,9 +1393,21 @@ function StaffDashboardPage({
                 </div>
 
                 <div className="mb-5 grid gap-3 md:grid-cols-3">
-                  <MiniQueueStat label="Visible" value={String(reservationHostSummary.total)} helper="after current filters" />
-                  <MiniQueueStat label="Need table" value={String(reservationHostSummary.needsTable)} helper="confirmed parties still unassigned" />
-                  <MiniQueueStat label="Next 3h" value={String(reservationHostSummary.nextService)} helper="upcoming arrival pressure" />
+                  <MiniQueueStat
+                    label={i18n.t('Visible')}
+                    value={String(reservationHostSummary.total)}
+                    helper={i18n.t('after current filters')}
+                  />
+                  <MiniQueueStat
+                    label={i18n.t('Need table')}
+                    value={String(reservationHostSummary.needsTable)}
+                    helper={i18n.t('confirmed parties still unassigned')}
+                  />
+                  <MiniQueueStat
+                    label={i18n.t('Next 3h')}
+                    value={String(reservationHostSummary.nextService)}
+                    helper={i18n.t('upcoming arrival pressure')}
+                  />
                 </div>
 
               {reservationsQuery.isLoading ? <LoadingState label="Loading reservations" /> : null}
@@ -1347,8 +1426,12 @@ function StaffDashboardPage({
               </DataPanel>
             </div>
 
-            <DataPanel testId="service-requests-panel" title="Open service requests" subtitle="Resolve waiter calls and bill requests as soon as they land.">
-              {serviceRequestsQuery.isLoading ? <LoadingState label="Loading service requests" /> : null}
+            <DataPanel
+              testId="service-requests-panel"
+              title={i18n.t('Open service requests')}
+              subtitle={i18n.t('Resolve waiter calls and bill requests as soon as they land.')}
+            >
+              {serviceRequestsQuery.isLoading ? <LoadingState label={i18n.t('Loading service requests')} /> : null}
               {serviceRequestsQuery.error ? <ErrorState error={serviceRequestsQuery.error} /> : null}
               {serviceRequestMutation.error ? <div className="mt-4"><InlineError error={serviceRequestMutation.error} /></div> : null}
               {serviceRequestsQuery.data ? (
@@ -1368,11 +1451,13 @@ function StaffDashboardPage({
               {showFloorLane ? (
                 <div className="mb-5 grid gap-3 md:grid-cols-[1fr_auto] md:items-end">
                   <label className="block">
-                    <span className="mb-2 block text-xs font-bold uppercase tracking-[0.24em] text-slate">Search orders</span>
+                    <span className="mb-2 block text-xs font-bold uppercase tracking-[0.24em] text-slate">
+                      {i18n.t('Search orders')}
+                    </span>
                     <input
                       className="field"
                       onChange={(event) => setOrderSearch(event.target.value)}
-                      placeholder="Order code or note"
+                      placeholder={i18n.t('Order code or note')}
                       value={orderSearch}
                     />
                   </label>
@@ -1386,7 +1471,7 @@ function StaffDashboardPage({
                     }}
                     type="button"
                   >
-                    Clear order focus
+                    {i18n.t('Clear order focus')}
                   </button>
                 </div>
               ) : null}
@@ -1395,9 +1480,11 @@ function StaffDashboardPage({
                 <div className="mb-5 rounded-[24px] border border-forest/15 bg-forest/5 px-4 py-4">
                   <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                     <div>
-                      <p className="text-xs font-bold uppercase tracking-[0.24em] text-forest">Focused session</p>
+                      <p className="text-xs font-bold uppercase tracking-[0.24em] text-forest">
+                        {i18n.t('Focused session')}
+                      </p>
                       <p className="mt-2 text-sm leading-7 text-slate">
-                        {activeSession.tableCode} • {activeSession.tableName} • Opened {formatDateTime(activeSession.openedAt)}
+                        {activeSession.tableCode} • {activeSession.tableName} • {i18n.t('Opened')} {formatDateTime(activeSession.openedAt)}
                       </p>
                     </div>
                     <div className="flex flex-wrap gap-2">
@@ -1407,30 +1494,30 @@ function StaffDashboardPage({
                           disabled={createStaffOrderMutation.isPending}
                           onClick={() =>
                             createStaffOrderMutation.mutate({
-                              note: `Staff order started from ${activeSession.tableCode}`,
+                              note: `${i18n.t('Staff order started from')} ${activeSession.tableCode}`,
                               tableSessionId: activeSession.id,
                             })
                           }
                           type="button"
                         >
-                          {createStaffOrderMutation.isPending ? 'Starting...' : 'Create dine-in order'}
+                          {createStaffOrderMutation.isPending ? i18n.t('Starting...') : i18n.t('Create dine-in order')}
                         </button>
                       ) : null}
                       <button className="button-chip" onClick={() => setOrderSessionFilter(null)} type="button">
-                        Release focus
+                        {i18n.t('Release focus')}
                       </button>
                     </div>
                   </div>
                 </div>
               ) : null}
 
-            {showFloorLane && ordersQuery.isLoading ? <LoadingState label="Loading orders" /> : null}
+            {showFloorLane && ordersQuery.isLoading ? <LoadingState label={i18n.t('Loading orders')} /> : null}
             {showFloorLane && ordersQuery.error ? <ErrorState error={ordersQuery.error} /> : null}
-            {showFloorLane && staffMenuQuery.isLoading ? <LoadingState label="Loading menu items for POS" /> : null}
+            {showFloorLane && staffMenuQuery.isLoading ? <LoadingState label={i18n.t('Loading menu items for POS')} /> : null}
             {showFloorLane && staffMenuQuery.error ? <ErrorState error={staffMenuQuery.error} /> : null}
-            {showBillingLane && invoicesQuery.isLoading ? <LoadingState label="Loading invoices" /> : null}
+            {showBillingLane && invoicesQuery.isLoading ? <LoadingState label={i18n.t('Loading invoices')} /> : null}
             {showBillingLane && invoicesQuery.error ? <ErrorState error={invoicesQuery.error} /> : null}
-            {showBillingLane && paymentsQuery.isLoading ? <LoadingState label="Loading payments" /> : null}
+            {showBillingLane && paymentsQuery.isLoading ? <LoadingState label={i18n.t('Loading payments')} /> : null}
             {showBillingLane && paymentsQuery.error ? <ErrorState error={paymentsQuery.error} /> : null}
             {createStaffOrderMutation.error ? <div className="mb-4"><InlineError error={createStaffOrderMutation.error} /></div> : null}
             {(!showFloorLane || (ordersQuery.data && staffMenuQuery.data)) && (!showBillingLane || (invoicesQuery.data && paymentsQuery.data)) ? (
@@ -1522,7 +1609,7 @@ function ReservationList({
   }, [reservations]);
 
   if (!reservations.length) {
-    return <EmptyMessage message="No reservations yet." />;
+    return <EmptyMessage message={i18n.t('No reservations yet.')} />;
   }
 
   return (
@@ -1538,50 +1625,64 @@ function ReservationList({
                     {reservation.reservationCode} • {formatDateTime(reservation.reservationTime)}
                   </p>
                 </div>
-                <StatusPill tone={reservationStatusTone(reservation.status)}>{reservation.status}</StatusPill>
+                    <StatusPill tone={reservationStatusTone(reservation.status)}>{i18n.t(reservation.status)}</StatusPill>
               </div>
 
               <div className="grid gap-2 sm:grid-cols-2">
-                <InfoPair label="Party size" value={`${reservation.partySize} guests`} />
-                <InfoPair label="Table" value={reservation.assignedTableName ?? reservation.assignedTableCode ?? 'Unassigned'} />
-                <InfoPair label="Phone" value={reservation.phone} />
-                <InfoPair label="Area" value={reservation.requestedArea || 'Any available'} />
+                    <InfoPair label={i18n.t('Party size')} value={`${reservation.partySize} ${i18n.t('guests')}`} />
+                    <InfoPair
+                      label={i18n.t('Table')}
+                      value={reservation.assignedTableName ?? reservation.assignedTableCode ?? i18n.t('Unassigned')}
+                    />
+                    <InfoPair label={i18n.t('Phone')} value={reservation.phone} />
+                    <InfoPair label={i18n.t('Area')} value={reservation.requestedArea || i18n.t('Any available')} />
               </div>
 
               <div className="rounded-[20px] border border-ink/10 bg-white/70 px-4 py-3 text-sm leading-7 text-slate">
                 {reservation.status === 'PENDING'
-                  ? 'Host action: verify the booking details, then confirm or cancel it.'
+                      ? i18n.t('Host action: verify the booking details, then confirm or cancel it.')
                   : reservation.status === 'CONFIRMED'
-                    ? 'Host action: pick the right table and check the party in when they arrive.'
+                        ? i18n.t('Host action: pick the right table and check the party in when they arrive.')
                     : reservation.status === 'CHECKED_IN'
-                      ? 'Waiter action: the party is seated; complete the reservation after service handoff is done.'
-                      : 'History only: no further staff action is required.'}
+                          ? i18n.t('Waiter action: the party is seated; complete the reservation after service handoff is done.')
+                          : i18n.t('History only: no further staff action is required.')}
               </div>
 
-              {reservation.note ? <p className="text-sm leading-7 text-slate">Guest note: {reservation.note}</p> : null}
+                  {reservation.note ? (
+                    <p className="text-sm leading-7 text-slate">
+                      {i18n.t('Guest note:')} {reservation.note}
+                    </p>
+                  ) : null}
               {reservation.status === 'CONFIRMED' ? (
                 <div className="space-y-2">
                   <label className="block">
-                    <span className="mb-2 block text-xs font-bold uppercase tracking-[0.24em] text-slate">Table for check-in</span>
+                        <span className="mb-2 block text-xs font-bold uppercase tracking-[0.24em] text-slate">
+                          {i18n.t('Table for check-in')}
+                        </span>
                     <select
                       className="field"
                       value={tableSelections[reservation.id] ?? ''}
                       onChange={(event) => setTableSelections((current) => ({ ...current, [reservation.id]: event.target.value }))}
                     >
-                      <option value="">Choose a table</option>
+                          <option value="">{i18n.t('Choose a table')}</option>
                       {reservation.assignedTableId !== null && !availableTables.some((table) => table.id === reservation.assignedTableId) ? (
                         <option value={String(reservation.assignedTableId)}>
-                          {reservation.assignedTableCode ?? `Table #${reservation.assignedTableId}`} • {reservation.assignedTableName ?? 'Assigned table'}
+                            {reservation.assignedTableCode ??
+                              i18n.t('Table #{{id}}', { id: reservation.assignedTableId })}{' '}
+                            •{' '}
+                            {reservation.assignedTableName ?? i18n.t('Assigned table')}
                         </option>
                       ) : null}
                       {availableTables.map((table) => (
                         <option key={table.id} value={String(table.id)}>
-                          {formatTableLabel(table)} • {table.areaName} • {table.seatCount} seats
+                              {formatTableLabel(table)} • {table.areaName} • {table.seatCount} {i18n.t('seats')}
                         </option>
                       ))}
                     </select>
                   </label>
-                  {availableTables.length === 0 ? <p className="text-sm leading-7 text-slate">No available tables loaded yet.</p> : null}
+                      {availableTables.length === 0 ? (
+                        <p className="text-sm leading-7 text-slate">{i18n.t('No available tables loaded yet.')}</p>
+                      ) : null}
                 </div>
               ) : null}
             </div>
@@ -1595,15 +1696,15 @@ function ReservationList({
                     onClick={() => onAction({ reservationId: reservation.id, kind: 'confirm' })}
                     type="button"
                   >
-                    {isMutating ? 'Saving...' : 'Confirm booking'}
+                    {isMutating ? i18n.t('Saving...') : i18n.t('Confirm booking')}
                   </button>
                   <button
                     className="button-chip"
                     disabled={isMutating}
-                    onClick={() => onAction({ reservationId: reservation.id, kind: 'cancel', note: 'Cancelled from staff queue' })}
+                    onClick={() => onAction({ reservationId: reservation.id, kind: 'cancel', note: i18n.t('Cancelled from staff queue') })}
                     type="button"
                   >
-                    {isMutating ? 'Saving...' : 'Cancel booking'}
+                    {isMutating ? i18n.t('Saving...') : i18n.t('Cancel booking')}
                   </button>
                 </>
               ) : null}
@@ -1620,18 +1721,18 @@ function ReservationList({
                         diningTableId: Number(tableSelections[reservation.id]),
                       })
                     }
-                    title={(tableSelections[reservation.id] ?? '') === '' ? 'Choose a table before check-in' : undefined}
+                    title={(tableSelections[reservation.id] ?? '') === '' ? i18n.t('Choose a table before check-in') : undefined}
                     type="button"
                   >
-                    {isMutating ? 'Saving...' : 'Check in party'}
+                    {isMutating ? i18n.t('Saving...') : i18n.t('Check in party')}
                   </button>
                   <button
                     className="button-chip"
                     disabled={isMutating}
-                    onClick={() => onAction({ reservationId: reservation.id, kind: 'cancel', note: 'Cancelled from staff queue' })}
+                    onClick={() => onAction({ reservationId: reservation.id, kind: 'cancel', note: i18n.t('Cancelled from staff queue') })}
                     type="button"
                   >
-                    {isMutating ? 'Saving...' : 'Cancel booking'}
+                    {isMutating ? i18n.t('Saving...') : i18n.t('Cancel booking')}
                   </button>
                 </>
               ) : null}
@@ -1643,12 +1744,12 @@ function ReservationList({
                   onClick={() => onAction({ reservationId: reservation.id, kind: 'complete' })}
                   type="button"
                 >
-                  {isMutating ? 'Saving...' : 'Complete handoff'}
+                  {isMutating ? i18n.t('Saving...') : i18n.t('Complete handoff')}
                 </button>
               ) : null}
 
               {reservation.status === 'CANCELLED' || reservation.status === 'COMPLETED' ? (
-                <span className="text-xs font-bold uppercase tracking-[0.18em] text-slate">No further action</span>
+                <span className="text-xs font-bold uppercase tracking-[0.18em] text-slate">{i18n.t('No further action')}</span>
               ) : null}
             </div>
           </div>
@@ -1668,7 +1769,7 @@ function ServiceRequestList({
   requests: ServiceRequest[];
 }) {
   if (!requests.length) {
-    return <EmptyMessage message="No service requests yet." />;
+    return <EmptyMessage message={i18n.t('No service requests yet.')} />;
   }
 
   return (
@@ -1681,10 +1782,11 @@ function ServiceRequestList({
                 <div>
                   <p className="font-semibold text-ink">{serviceRequestLabel(request.requestType)}</p>
                   <p className="text-sm text-slate">
-                    Order #{request.orderId ?? 'n/a'} • Session #{request.tableSessionId ?? 'n/a'} • {formatDateTime(request.requestedAt)}
+                    {i18n.t('Order #')} {request.orderId ?? i18n.t('n/a')} • {i18n.t('Session #')} {request.tableSessionId ?? i18n.t('n/a')} •{' '}
+                    {formatDateTime(request.requestedAt)}
                   </p>
                 </div>
-                <StatusPill tone={serviceRequestStatusTone(request.status)}>{request.status}</StatusPill>
+                <StatusPill tone={serviceRequestStatusTone(request.status)}>{i18n.t(request.status)}</StatusPill>
               </div>
 
               {request.note ? <p className="text-sm leading-7 text-slate">{request.note}</p> : null}
@@ -1695,10 +1797,10 @@ function ServiceRequestList({
                 className="button-chip-primary"
                 disabled={isMutating || request.status !== 'OPEN'}
                 onClick={() => onResolve(request.id)}
-                title={request.status !== 'OPEN' ? 'Only open requests can be resolved' : undefined}
+                title={request.status !== 'OPEN' ? i18n.t('Only open requests can be resolved') : undefined}
                 type="button"
               >
-                {isMutating ? 'Resolving...' : 'Resolve'}
+                {isMutating ? i18n.t('Resolving...') : i18n.t('Resolve')}
               </button>
             </div>
           </div>
@@ -1710,7 +1812,7 @@ function ServiceRequestList({
 
 function TableSessionList({ sessions }: { sessions: TableSession[] }) {
   if (!sessions.length) {
-    return <EmptyMessage message="No open table sessions yet." />;
+    return <EmptyMessage message={i18n.t('No open table sessions yet.')} />;
   }
 
   return (
@@ -1720,10 +1822,10 @@ function TableSessionList({ sessions }: { sessions: TableSession[] }) {
           <div>
             <p className="font-semibold text-ink">{formatTableSessionLabel(session)}</p>
             <p className="text-sm text-slate">
-              {session.tableCode} • {session.status} • Opened {formatDateTime(session.openedAt)}
+              {session.tableCode} • {i18n.t(session.status)} • {i18n.t('Opened')} {formatDateTime(session.openedAt)}
             </p>
           </div>
-          <StatusPill tone={session.status === 'OPEN' ? 'forest' : 'neutral'}>{session.status}</StatusPill>
+          <StatusPill tone={session.status === 'OPEN' ? 'forest' : 'neutral'}>{i18n.t(session.status)}</StatusPill>
         </div>
       ))}
     </div>
@@ -1757,42 +1859,42 @@ function ShortcutCard({ title, body, to }: { title: string; body: string; to: st
 
 function describeWorkspaceLane(lane: WorkspaceLane, canManageFloor: boolean, canManageBilling: boolean) {
   if (!canManageFloor && canManageBilling) {
-    return 'Cashier lane';
+    return i18n.t('Cashier lane');
   }
 
   if (canManageFloor && !canManageBilling) {
-    return 'Floor lane';
+    return i18n.t('Floor lane');
   }
 
   if (lane === 'FLOOR') {
-    return 'Floor lane';
+    return i18n.t('Floor lane');
   }
 
   if (lane === 'BILLING') {
-    return 'Billing lane';
+    return i18n.t('Billing lane');
   }
 
-  return 'Control lane';
+  return i18n.t('Control lane');
 }
 
 function describeWorkspaceLaneBody(lane: WorkspaceLane, canManageFloor: boolean, canManageBilling: boolean) {
   if (!canManageFloor && canManageBilling) {
-    return 'Collect payment, reconcile invoices, and stay focused on cashier handoff without floor-only noise.';
+    return i18n.t('Collect payment, reconcile invoices, and stay focused on cashier handoff without floor-only noise.');
   }
 
   if (canManageFloor && !canManageBilling) {
-    return 'Keep reservations moving, clear service requests, and manage live tables without cashier-only distractions.';
+    return i18n.t('Keep reservations moving, clear service requests, and manage live tables without cashier-only distractions.');
   }
 
   if (lane === 'FLOOR') {
-    return 'Focus on reservations, sessions, and live table action while billing stays out of the way.';
+    return i18n.t('Focus on reservations, sessions, and live table action while billing stays out of the way.');
   }
 
   if (lane === 'BILLING') {
-    return 'Focus on invoices and payments while floor operations stay out of the way.';
+    return i18n.t('Focus on invoices and payments while floor operations stay out of the way.');
   }
 
-  return 'Keep reservations moving, clear service requests, and monitor back-office activity without leaving the floor console.';
+  return i18n.t('Keep reservations moving, clear service requests, and monitor back-office activity without leaving the floor console.');
 }
 
 function RoleChip({ role }: { role: AuthSession['user']['roles'][number] }) {
@@ -1974,17 +2076,17 @@ function selectedMenuItems(items: MenuItem[], quantities: Record<number, number>
     .filter((item) => (quantities[item.id] ?? 0) > 0)
     .map((item) => ({
       menuItemId: item.id,
-      quantity: quantities[item.id],
+      quantity: Number(quantities[item.id]),
       note: '',
     }));
 }
 
 function findMenuItemName(items: MenuItem[], menuItemId: number) {
-  return items.find((item) => item.id === menuItemId)?.name ?? `Item #${menuItemId}`;
+  return items.find((item) => item.id === menuItemId)?.name ?? i18n.t('Item #{{id}}', { id: menuItemId });
 }
 
 function formatMoney(value: number) {
-  return new Intl.NumberFormat('en-US', {
+  return new Intl.NumberFormat('vi-VN', {
     style: 'currency',
     currency: 'USD',
     maximumFractionDigits: 2,
@@ -2026,13 +2128,13 @@ function serviceRequestStatusTone(status: ServiceRequestStatus) {
 function serviceRequestLabel(requestType: ServiceRequest['requestType']) {
   switch (requestType) {
     case 'CALL_WAITER':
-      return 'Call waiter';
+      return i18n.t('Call waiter');
     case 'REQUEST_BILL':
-      return 'Request bill';
+      return i18n.t('Request bill');
     case 'WATER':
-      return 'Water refill';
+      return i18n.t('Water refill');
     case 'OTHER':
-      return 'Other request';
+      return i18n.t('Other request');
   }
 }
 
@@ -2065,7 +2167,7 @@ function getErrorMessage(error: unknown) {
     return error.message;
   }
 
-  return 'Something went wrong.';
+  return i18n.t('Something went wrong.');
 }
 
 

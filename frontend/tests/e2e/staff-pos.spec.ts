@@ -1,17 +1,28 @@
 import { expect, test } from '@playwright/test';
 
 test('staff can enter the floor workspace and continue a table flow', async ({ page }) => {
+  // Force Vietnamese UI for deterministic selectors.
+  await page.addInitScript(() => {
+    window.localStorage.setItem('h-restaurant-management-system:lang', 'vi');
+  });
+
   await page.goto('/staff/login');
 
-  await page.getByLabel('Username').fill('admin');
-  await page.getByLabel('Password').fill('Admin@123456');
-  await page.getByRole('button', { name: /open staff dashboard/i }).click();
+  // i18n initializes on first load; reload after forcing language.
+  await page.evaluate(() => {
+    window.localStorage.setItem('h-restaurant-management-system:lang', 'vi');
+  });
+  await page.reload();
 
-  await expect(page.getByText(/Welcome back/i)).toBeVisible();
+  await page.getByLabel('Tên đăng nhập').fill('admin');
+  await page.getByLabel('Mật khẩu').fill('Admin@123456');
+  await page.getByRole('button', { name: /mở bảng điều khiển nhân viên/i }).click();
 
-  const seatWalkInButton = page.getByRole('button', { name: /seat walk-in/i }).first();
-  const openOrderFlowButton = page.getByRole('button', { name: /open order flow/i }).first();
-  const openSessionButton = page.getByRole('button', { name: /open session/i }).first();
+  await expect(page.getByText(/Chào mừng bạn quay lại/i)).toBeVisible();
+
+  const seatWalkInButton = page.getByRole('button', { name: /cho khách vãng lai ngồi/i }).first();
+  const openOrderFlowButton = page.getByRole('button', { name: /mở luồng đơn/i }).first();
+  const openSessionButton = page.getByRole('button', { name: /mở ca/i }).first();
 
   await expect
     .poll(async () => {
@@ -29,10 +40,10 @@ test('staff can enter the floor workspace and continue a table flow', async ({ p
 
   const workbench = page.getByTestId('operations-workbench');
   await expect(workbench).toBeVisible();
-  await expect(workbench.getByText(/Focused session/i)).toBeVisible();
+  await expect(workbench.getByText(/Ca bàn đang tập trung/i)).toBeVisible();
 
   const orderCode = workbench.getByText(/ORD-/).first();
-  const createOrderButton = workbench.getByRole('button', { name: /create dine-in order/i }).first();
+  const createOrderButton = workbench.getByRole('button', { name: /tạo đơn ăn tại chỗ/i }).first();
 
   await expect
     .poll(async () => {

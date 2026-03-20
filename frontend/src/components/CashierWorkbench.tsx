@@ -2,6 +2,7 @@ import clsx from 'clsx';
 import { useEffect, useMemo, useState } from 'react';
 import type { FormEvent, ReactNode } from 'react';
 import type { Invoice, MenuItem, Order, OrderItemStatus, Payment, PaymentMethod } from '../lib/api';
+import i18n from '../i18n/i18n';
 
 const PAYMENT_METHOD_OPTIONS: PaymentMethod[] = ['CASH', 'CARD', 'BANK_TRANSFER', 'E_WALLET'];
 
@@ -85,11 +86,11 @@ export function CashierWorkbench({
     orders.forEach((order) => {
       const key = order.tableSessionId === null ? 'detached' : `session-${order.tableSessionId}`;
       const label = order.tableSessionId === null
-        ? 'Counter / detached order'
-        : sessionLabelById[order.tableSessionId] ?? `Session #${order.tableSessionId}`;
+        ? i18n.t('Counter / detached order')
+        : sessionLabelById[order.tableSessionId] ?? i18n.t('Session #{{id}}', { id: order.tableSessionId });
       const helper = order.tableSessionId === null
-        ? 'No live table session is attached'
-        : `Session #${order.tableSessionId}`;
+        ? i18n.t('No live table session is attached')
+        : i18n.t('Session #{{id}}', { id: order.tableSessionId });
       const group = groups.get(key) ?? {
         key,
         label,
@@ -216,10 +217,12 @@ export function CashierWorkbench({
         <section className="space-y-4 rounded-[28px] border border-ink/10 bg-white/65 p-5">
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div>
-              <p className="text-xs font-bold uppercase tracking-[0.24em] text-slate">Order operations</p>
-              <h3 className="mt-2 font-display text-2xl text-ink">Confirm live tickets and keep the floor moving</h3>
+              <p className="text-xs font-bold uppercase tracking-[0.24em] text-slate">{i18n.t('Order operations')}</p>
+              <h3 className="mt-2 font-display text-2xl text-ink">{i18n.t('Confirm live tickets and keep the floor moving')}</h3>
             </div>
-            <span className="text-xs font-bold uppercase tracking-[0.22em] text-slate">{orders.length} recent orders</span>
+            <span className="text-xs font-bold uppercase tracking-[0.22em] text-slate">
+              {orders.length} {i18n.t('recent orders')}
+            </span>
           </div>
 
           {orderError ? <ErrorPill error={orderError} /> : null}
@@ -229,14 +232,14 @@ export function CashierWorkbench({
             <div className="grid gap-3 lg:grid-cols-2">
               {orderGroups.map((group) => (
                 <article key={group.key} className="rounded-[22px] border border-ink/10 bg-cream/55 px-4 py-4">
-                  <p className="text-xs font-bold uppercase tracking-[0.22em] text-slate">Session lane</p>
+                    <p className="text-xs font-bold uppercase tracking-[0.22em] text-slate">{i18n.t('Session lane')}</p>
                   <div className="mt-2 flex flex-wrap items-center gap-2">
                     <p className="font-semibold text-ink">{group.label}</p>
-                    {group.needsAttention ? <Badge tone="ember">Needs attention</Badge> : null}
-                    {group.paymentRequested ? <Badge tone="warm">Payment requested</Badge> : null}
+                      {group.needsAttention ? <Badge tone="ember">{i18n.t('Needs attention')}</Badge> : null}
+                      {group.paymentRequested ? <Badge tone="warm">{i18n.t('Payment requested')}</Badge> : null}
                   </div>
                   <p className="mt-2 text-sm leading-7 text-slate">
-                    {group.helper} • {group.orderCount} order(s) • {formatMoney(group.totalAmount)}
+                      {group.helper} • {group.orderCount} {i18n.t('order(s)')} • {formatMoney(group.totalAmount)}
                   </p>
                 </article>
               ))}
@@ -257,8 +260,8 @@ export function CashierWorkbench({
                   && (order.status === 'CONFIRMED' || order.status === 'COMPLETED');
                 const timeline = buildOrderTimeline(order, invoice, orderPayments);
                 const sessionLabel = order.tableSessionId === null
-                  ? 'Counter / detached order'
-                  : sessionLabelById[order.tableSessionId] ?? `Session #${order.tableSessionId}`;
+                  ? i18n.t('Counter / detached order')
+                  : sessionLabelById[order.tableSessionId] ?? i18n.t('Session #{{id}}', { id: order.tableSessionId });
 
                 return (
                   <article key={order.id} className="rounded-[24px] border border-ink/10 bg-white/85 p-4 shadow-float">
@@ -267,26 +270,28 @@ export function CashierWorkbench({
                         <div className="flex flex-wrap items-center gap-3">
                           <p className="font-semibold text-ink">{order.orderCode}</p>
                           <Badge tone={order.status === 'CANCELLED' ? 'warm' : order.status === 'COMPLETED' ? 'neutral' : order.status === 'CONFIRMED' ? 'forest' : 'ember'}>
-                            {order.status}
+                            {i18n.t(order.status)}
                           </Badge>
-                          <Badge tone={order.sourceChannel === 'QR' ? 'forest' : 'neutral'}>{order.sourceChannel}</Badge>
+                          <Badge tone={order.sourceChannel === 'QR' ? 'forest' : 'neutral'}>{i18n.t(order.sourceChannel)}</Badge>
                         </div>
                         <p className="text-sm leading-7 text-slate">
-                          {order.items.length} item(s) • {sessionLabel}
+                          {order.items.length} {i18n.t('item(s)')} • {sessionLabel}
                         </p>
                         <div className="grid gap-2 sm:grid-cols-2">
-                          <InfoPair label="Subtotal" value={formatMoney(order.subtotal)} />
-                          <InfoPair label="Total" value={formatMoney(order.totalAmount)} />
+                          <InfoPair label={i18n.t('Subtotal')} value={formatMoney(order.subtotal)} />
+                          <InfoPair label={i18n.t('Total')} value={formatMoney(order.totalAmount)} />
                         </div>
                         {order.note ? (
                           <div className="rounded-[20px] border border-ink/10 bg-white/75 px-4 py-3 text-sm leading-7 text-slate">
-                            Order note: {order.note}
+                            {i18n.t('Order note:')} {order.note}
                           </div>
                         ) : null}
                         <div className="rounded-[22px] border border-ink/10 bg-white/75 px-4 py-4">
                           <div className="flex items-center justify-between gap-3">
-                            <p className="text-xs font-bold uppercase tracking-[0.24em] text-slate">Timeline</p>
-                            <span className="text-xs font-bold uppercase tracking-[0.18em] text-slate">{timeline.length} checkpoints</span>
+                            <p className="text-xs font-bold uppercase tracking-[0.24em] text-slate">{i18n.t('Timeline')}</p>
+                            <span className="text-xs font-bold uppercase tracking-[0.18em] text-slate">
+                              {timeline.length} {i18n.t('checkpoints')}
+                            </span>
                           </div>
                           <div className="mt-3 flex flex-wrap gap-2">
                             {timeline.map((entry) => (
@@ -310,8 +315,10 @@ export function CashierWorkbench({
                         </div>
                         <div className="space-y-3 rounded-[22px] border border-ink/10 bg-cream/50 px-4 py-4">
                           <div className="flex items-center justify-between gap-3">
-                            <p className="text-xs font-bold uppercase tracking-[0.24em] text-slate">Ticket items</p>
-                            <span className="text-xs font-bold uppercase tracking-[0.18em] text-slate">{order.items.length} line(s)</span>
+                            <p className="text-xs font-bold uppercase tracking-[0.24em] text-slate">{i18n.t('Ticket items')}</p>
+                            <span className="text-xs font-bold uppercase tracking-[0.18em] text-slate">
+                              {order.items.length} {i18n.t('line(s)')}
+                            </span>
                           </div>
 
                           {order.items.length ? (
@@ -322,12 +329,16 @@ export function CashierWorkbench({
                                     <div className="space-y-2">
                                       <div className="flex flex-wrap items-center gap-2">
                                         <p className="font-semibold text-ink">{item.itemName}</p>
-                                        <Badge tone={orderItemTone(item.status)}>{item.status}</Badge>
+                                          <Badge tone={orderItemTone(item.status)}>{i18n.t(item.status)}</Badge>
                                       </div>
                                       <p className="text-sm leading-7 text-slate">
                                         {item.quantity} x {formatMoney(item.unitPrice)} = {formatMoney(item.lineTotal)}
                                       </p>
-                                      {item.note ? <p className="text-sm leading-7 text-slate">Note: {item.note}</p> : null}
+                                      {item.note ? (
+                                        <p className="text-sm leading-7 text-slate">
+                                          {i18n.t('Note:')} {item.note}
+                                        </p>
+                                      ) : null}
                                     </div>
 
                                     {order.status === 'DRAFT' && item.status !== 'CANCELLED' ? (
@@ -336,9 +347,12 @@ export function CashierWorkbench({
                                         onSubmit={(event) => submitOrderItemUpdate(event, order.id, item.id)}
                                       >
                                         <label className="block">
-                                          <span className="mb-2 block text-xs font-bold uppercase tracking-[0.18em] text-slate">Qty</span>
+                                          <span className="mb-2 block text-xs font-bold uppercase tracking-[0.18em] text-slate">{i18n.t('Qty')}</span>
                                           <input
-                                            aria-label={`Quantity for ${item.itemName} on ${order.orderCode}`}
+                                            aria-label={i18n.t('Quantity for {{itemName}} on {{orderCode}}', {
+                                              itemName: item.itemName,
+                                              orderCode: order.orderCode,
+                                            })}
                                             className="field"
                                             defaultValue={String(item.quantity)}
                                             min="1"
@@ -348,18 +362,21 @@ export function CashierWorkbench({
                                           />
                                         </label>
                                         <label className="block">
-                                          <span className="mb-2 block text-xs font-bold uppercase tracking-[0.18em] text-slate">Line note</span>
+                                          <span className="mb-2 block text-xs font-bold uppercase tracking-[0.18em] text-slate">{i18n.t('Line note')}</span>
                                           <input
-                                            aria-label={`Line note for ${item.itemName} on ${order.orderCode}`}
+                                            aria-label={i18n.t('Line note for {{itemName}} on {{orderCode}}', {
+                                              itemName: item.itemName,
+                                              orderCode: order.orderCode,
+                                            })}
                                             className="field"
                                             defaultValue={item.note ?? ''}
                                             name="note"
-                                            placeholder="Guest preference, allergy, course..."
+                                            placeholder={i18n.t('Guest preference, allergy, course...')}
                                           />
                                         </label>
                                         <div className="flex flex-wrap gap-2 md:col-span-2">
                                           <button className="button-chip-primary" disabled={isBusy} type="submit">
-                                            {isBusy ? 'Saving...' : 'Update line'}
+                                            {isBusy ? i18n.t('Saving...') : i18n.t('Update line')}
                                           </button>
                                           <button
                                             className="button-chip"
@@ -367,7 +384,7 @@ export function CashierWorkbench({
                                             onClick={() => onUpdateOrderItem({ orderId: order.id, orderItemId: item.id, cancelled: true })}
                                             type="button"
                                           >
-                                            {isBusy ? 'Saving...' : 'Cancel line'}
+                                            {isBusy ? i18n.t('Saving...') : i18n.t('Cancel line')}
                                           </button>
                                         </div>
                                       </form>
@@ -377,16 +394,16 @@ export function CashierWorkbench({
                               ))}
                             </div>
                           ) : (
-                            <EmptyState message="No line items yet. Start the ticket by adding the first dish." />
+                            <EmptyState message={i18n.t('No line items yet. Start the ticket by adding the first dish.')} />
                           )}
 
                           {order.status === 'DRAFT' || order.status === 'CONFIRMED' ? (
                             menuItems.length ? (
                               <form className="grid gap-3 rounded-[22px] border border-forest/15 bg-forest/5 p-4 md:grid-cols-[1.2fr_7rem_1fr_auto]" onSubmit={(event) => submitAddOrderItem(event, order.id)}>
                                 <label className="block">
-                                  <span className="mb-2 block text-xs font-bold uppercase tracking-[0.18em] text-slate">Menu item</span>
+                                  <span className="mb-2 block text-xs font-bold uppercase tracking-[0.18em] text-slate">{i18n.t('Menu item')}</span>
                                   <select
-                                    aria-label={`Add menu item for ${order.orderCode}`}
+                                    aria-label={i18n.t('Add menu item for {{orderCode}}', { orderCode: order.orderCode })}
                                     className="field"
                                     defaultValue={String(menuItems[0]?.id ?? '')}
                                     name="menuItemId"
@@ -399,9 +416,9 @@ export function CashierWorkbench({
                                   </select>
                                 </label>
                                 <label className="block">
-                                  <span className="mb-2 block text-xs font-bold uppercase tracking-[0.18em] text-slate">Qty</span>
+                                  <span className="mb-2 block text-xs font-bold uppercase tracking-[0.18em] text-slate">{i18n.t('Qty')}</span>
                                   <input
-                                    aria-label={`Add quantity for ${order.orderCode}`}
+                                    aria-label={i18n.t('Add quantity for {{orderCode}}', { orderCode: order.orderCode })}
                                     className="field"
                                     defaultValue="1"
                                     min="1"
@@ -411,45 +428,50 @@ export function CashierWorkbench({
                                   />
                                 </label>
                                 <label className="block">
-                                  <span className="mb-2 block text-xs font-bold uppercase tracking-[0.18em] text-slate">Note</span>
+                                  <span className="mb-2 block text-xs font-bold uppercase tracking-[0.18em] text-slate">{i18n.t('Note')}</span>
                                   <input
-                                    aria-label={`Add note for ${order.orderCode}`}
+                                    aria-label={i18n.t('Add note for {{orderCode}}', { orderCode: order.orderCode })}
                                     className="field"
                                     name="note"
-                                    placeholder="Course, allergy, rush..."
+                                    placeholder={i18n.t('Course, allergy, rush...')}
                                   />
                                 </label>
                                 <div className="flex items-end">
                                   <button className="button-chip-primary w-full justify-center" disabled={isBusy} type="submit">
-                                    {isBusy ? 'Saving...' : 'Add item'}
+                                    {isBusy ? i18n.t('Saving...') : i18n.t('Add item')}
                                   </button>
                                 </div>
                               </form>
                             ) : (
                               <div className="rounded-[20px] border border-dashed border-ink/15 bg-white/70 px-4 py-3 text-sm leading-7 text-slate">
-                                No active menu items are available to add right now.
+                                {i18n.t('No active menu items are available to add right now.')}
                               </div>
                             )
                           ) : null}
                         </div>
                         {hasPendingNewItems && order.status === 'CONFIRMED' ? (
                           <div className="rounded-[20px] border border-ember/20 bg-ember/10 px-4 py-3 text-sm leading-7 text-slate">
-                            This confirmed order still has newly added items waiting for a final confirm.
+                            {i18n.t('This confirmed order still has newly added items waiting for a final confirm.')}
                           </div>
                         ) : null}
                         {invoice ? (
                           <div className="rounded-[20px] border border-forest/15 bg-forest/5 px-4 py-3 text-sm leading-7 text-slate">
-                            Invoice {invoice.invoiceNumber} is {invoice.status}. Paid {formatMoney(invoice.paidAmount)} of {formatMoney(invoice.totalAmount)}.
+                            {i18n.t('Invoice {{invoiceNumber}} is {{status}}. Paid {{paidAmount}} of {{totalAmount}}.', {
+                              invoiceNumber: invoice.invoiceNumber,
+                              status: i18n.t(invoice.status),
+                              paidAmount: formatMoney(invoice.paidAmount),
+                              totalAmount: formatMoney(invoice.totalAmount),
+                            })}
                           </div>
                         ) : null}
                         {!invoice && showBillingOperations && !invoiceStatusKnown ? (
                           <div className="rounded-[20px] border border-ink/10 bg-white/75 px-4 py-3 text-sm leading-7 text-slate">
-                            Checking whether this order already has an invoice...
+                            {i18n.t('Checking whether this order already has an invoice...')}
                           </div>
                         ) : null}
                         {!invoice && hasKnownInvoice ? (
                           <div className="rounded-[20px] border border-forest/15 bg-forest/5 px-4 py-3 text-sm leading-7 text-slate">
-                            An invoice already exists for this order.
+                            {i18n.t('An invoice already exists for this order.')}
                           </div>
                         ) : null}
                       </div>
@@ -457,22 +479,22 @@ export function CashierWorkbench({
                       <div className="flex flex-col gap-2 lg:items-end">
                         {canConfirm ? (
                           <button className="button-chip-primary" disabled={isBusy} onClick={() => onConfirmOrder(order.id)} type="button">
-                            {isBusy ? 'Saving...' : 'Confirm'}
+                            {isBusy ? i18n.t('Saving...') : i18n.t('Confirm')}
                           </button>
                         ) : null}
                         {canCancel ? (
                           <button className="button-chip" disabled={isBusy} onClick={() => onCancelOrder(order.id)} type="button">
-                            {isBusy ? 'Saving...' : 'Cancel'}
+                            {isBusy ? i18n.t('Saving...') : i18n.t('Cancel')}
                           </button>
                         ) : null}
                         {canCreateInvoice ? (
                           <button className="button-chip" disabled={isBusy} onClick={() => onCreateInvoice(order)} type="button">
-                            {isBusy ? 'Saving...' : 'Create invoice'}
+                            {isBusy ? i18n.t('Saving...') : i18n.t('Create invoice')}
                           </button>
                         ) : null}
                         {showBillingOperations && invoice && invoice.status === 'OPEN' ? (
                           <button className="button-chip" disabled={isBusy} onClick={() => selectInvoice(invoice.id)} type="button">
-                            Use for payment
+                          {i18n.t('Use for payment')}
                           </button>
                         ) : null}
                       </div>
@@ -481,7 +503,7 @@ export function CashierWorkbench({
                 );
               })
             ) : (
-              <EmptyState message="No recent orders yet." />
+              <EmptyState message={i18n.t('No recent orders yet.')} />
             )}
           </div>
         </section>
@@ -491,10 +513,12 @@ export function CashierWorkbench({
         <section className="space-y-4 rounded-[28px] border border-ink/10 bg-white/65 p-5">
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div>
-              <p className="text-xs font-bold uppercase tracking-[0.24em] text-slate">Invoices and payments</p>
-              <h3 className="mt-2 font-display text-2xl text-ink">Collect payment against open invoices</h3>
+              <p className="text-xs font-bold uppercase tracking-[0.24em] text-slate">{i18n.t('Invoices and payments')}</p>
+              <h3 className="mt-2 font-display text-2xl text-ink">{i18n.t('Collect payment against open invoices')}</h3>
             </div>
-            <span className="text-xs font-bold uppercase tracking-[0.22em] text-slate">{openInvoices.length} payable invoices</span>
+            <span className="text-xs font-bold uppercase tracking-[0.22em] text-slate">
+              {openInvoices.length} {i18n.t('payable invoices')}
+            </span>
           </div>
 
           {paymentError ? <ErrorPill error={paymentError} /> : null}
@@ -502,26 +526,28 @@ export function CashierWorkbench({
           <div className="rounded-[24px] border border-ink/10 bg-white/85 p-4">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-xs font-bold uppercase tracking-[0.24em] text-slate">Payment form</p>
-                <p className="mt-2 text-sm leading-7 text-slate">Choose an open invoice, enter the amount, and record the payment immediately.</p>
+                <p className="text-xs font-bold uppercase tracking-[0.24em] text-slate">{i18n.t('Payment form')}</p>
+                <p className="mt-2 text-sm leading-7 text-slate">
+                  {i18n.t('Choose an open invoice, enter the amount, and record the payment immediately.')}
+                </p>
               </div>
             </div>
 
             <div className="mt-4 space-y-3">
               <label className="block">
-                <span className="mb-2 block text-xs font-bold uppercase tracking-[0.24em] text-slate">Invoice</span>
+                <span className="mb-2 block text-xs font-bold uppercase tracking-[0.24em] text-slate">{i18n.t('Invoice')}</span>
                 <select className="field" value={paymentForm.invoiceId} onChange={(event) => selectInvoice(Number(event.target.value))}>
-                  {openInvoices.length ? null : <option value="">No open invoices available</option>}
+                  {openInvoices.length ? null : <option value="">{i18n.t('No open invoices available')}</option>}
                   {openInvoices.map((invoice) => (
                     <option key={invoice.id} value={invoice.id}>
-                      {invoice.invoiceNumber} • {formatMoney(invoice.totalAmount - invoice.paidAmount)} remaining
+                      {invoice.invoiceNumber} • {formatMoney(invoice.totalAmount - invoice.paidAmount)} {i18n.t('remaining')}
                     </option>
                   ))}
                 </select>
               </label>
               <div className="grid gap-3 sm:grid-cols-2">
                 <label className="block">
-                  <span className="mb-2 block text-xs font-bold uppercase tracking-[0.24em] text-slate">Amount</span>
+                  <span className="mb-2 block text-xs font-bold uppercase tracking-[0.24em] text-slate">{i18n.t('Amount')}</span>
                   <input
                     className="field"
                     min="0.01"
@@ -532,7 +558,7 @@ export function CashierWorkbench({
                   />
                 </label>
                 <label className="block">
-                  <span className="mb-2 block text-xs font-bold uppercase tracking-[0.24em] text-slate">Method</span>
+                  <span className="mb-2 block text-xs font-bold uppercase tracking-[0.24em] text-slate">{i18n.t('Method')}</span>
                   <select
                     className="field"
                     value={paymentForm.method}
@@ -547,24 +573,26 @@ export function CashierWorkbench({
                 </label>
               </div>
               <label className="block">
-                <span className="mb-2 block text-xs font-bold uppercase tracking-[0.24em] text-slate">Note</span>
+                <span className="mb-2 block text-xs font-bold uppercase tracking-[0.24em] text-slate">{i18n.t('Note')}</span>
                 <textarea
                   className="field min-h-24"
                   value={paymentForm.note}
                   onChange={(event) => setPaymentForm((current) => ({ ...current, note: event.target.value }))}
-                  placeholder="Optional receipt or cashier note"
+                  placeholder={i18n.t('Optional receipt or cashier note')}
                 />
               </label>
               <button className="button-primary w-full justify-center" disabled={isBusy || openInvoices.length === 0} onClick={submitPayment} type="button">
-                {isBusy ? 'Recording...' : 'Record payment'}
+                {isBusy ? i18n.t('Recording...') : i18n.t('Record payment')}
               </button>
             </div>
           </div>
 
           <div className="space-y-3">
             <div className="flex items-end justify-between gap-3">
-              <p className="text-xs font-bold uppercase tracking-[0.24em] text-slate">Recent invoices</p>
-              <span className="text-xs font-bold uppercase tracking-[0.22em] text-slate">{invoices.length} shown</span>
+              <p className="text-xs font-bold uppercase tracking-[0.24em] text-slate">{i18n.t('Recent invoices')}</p>
+              <span className="text-xs font-bold uppercase tracking-[0.22em] text-slate">
+                {invoices.length} {i18n.t('shown')}
+              </span>
             </div>
             {invoices.length ? (
               invoices.map((invoice) => {
@@ -574,16 +602,16 @@ export function CashierWorkbench({
                     <div className="flex flex-col gap-3">
                       <div className="flex flex-wrap items-center gap-3">
                         <p className="font-semibold text-ink">{invoice.invoiceNumber}</p>
-                        <Badge tone={invoice.status === 'PAID' ? 'forest' : invoice.status === 'VOID' ? 'warm' : 'ember'}>{invoice.status}</Badge>
+                      <Badge tone={invoice.status === 'PAID' ? 'forest' : invoice.status === 'VOID' ? 'warm' : 'ember'}>{i18n.t(invoice.status)}</Badge>
                       </div>
-                      <p className="text-sm leading-7 text-slate">Order #{invoice.orderId}</p>
+                    <p className="text-sm leading-7 text-slate">{i18n.t('Order #')} {invoice.orderId}</p>
                       <div className="grid gap-2 sm:grid-cols-2">
-                        <InfoPair label="Paid" value={formatMoney(invoice.paidAmount)} />
-                        <InfoPair label="Remaining" value={formatMoney(Math.max(remaining, 0))} />
+                      <InfoPair label={i18n.t('Paid')} value={formatMoney(invoice.paidAmount)} />
+                      <InfoPair label={i18n.t('Remaining')} value={formatMoney(Math.max(remaining, 0))} />
                       </div>
                       {invoice.status === 'OPEN' && remaining > 0 ? (
                         <button className="button-chip-primary self-start" disabled={isBusy} onClick={() => selectInvoice(invoice.id)} type="button">
-                          Pay now
+                        {i18n.t('Pay now')}
                         </button>
                       ) : null}
                     </div>
@@ -591,28 +619,28 @@ export function CashierWorkbench({
                 );
               })
             ) : (
-              <EmptyState message="No invoices recorded yet." />
+              <EmptyState message={i18n.t('No invoices recorded yet.')} />
             )}
           </div>
 
           <div className="space-y-3">
-            <p className="text-xs font-bold uppercase tracking-[0.24em] text-slate">Recent payments</p>
+            <p className="text-xs font-bold uppercase tracking-[0.24em] text-slate">{i18n.t('Recent payments')}</p>
             {payments.length ? (
               payments.map((payment) => (
                 <article key={payment.id} className="rounded-[24px] border border-ink/10 bg-white/85 p-4">
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <p className="font-semibold text-ink">{payment.paymentCode}</p>
-                      <p className="text-sm text-slate">Invoice #{payment.invoiceId} • {paymentMethodLabel(payment.method)}</p>
+                      <p className="text-sm text-slate">{i18n.t('Invoice #')} {payment.invoiceId} • {paymentMethodLabel(payment.method)}</p>
                     </div>
-                    <Badge tone={payment.status === 'COMPLETED' ? 'forest' : 'neutral'}>{payment.status}</Badge>
+                    <Badge tone={payment.status === 'COMPLETED' ? 'forest' : 'neutral'}>{i18n.t(payment.status)}</Badge>
                   </div>
                   <p className="mt-3 text-sm leading-7 text-slate">{formatMoney(payment.amount)}</p>
                   {payment.note ? <p className="mt-2 text-sm leading-7 text-slate">{payment.note}</p> : null}
                 </article>
               ))
             ) : (
-              <EmptyState message="No payments recorded yet." />
+              <EmptyState message={i18n.t('No payments recorded yet.')} />
             )}
           </div>
         </section>
@@ -624,13 +652,13 @@ export function CashierWorkbench({
 function paymentMethodLabel(method: PaymentMethod) {
   switch (method) {
     case 'CASH':
-      return 'Cash';
+      return i18n.t('Cash');
     case 'CARD':
-      return 'Card';
+      return i18n.t('Card');
     case 'BANK_TRANSFER':
-      return 'Bank transfer';
+      return i18n.t('Bank transfer');
     case 'E_WALLET':
-      return 'E-wallet';
+      return i18n.t('E-wallet');
   }
 }
 
@@ -676,31 +704,31 @@ function EmptyState({ message }: { message: string }) {
 function buildOrderTimeline(order: Order, invoice: Invoice | undefined, payments: Payment[]) {
   const checkpoints: Array<{ label: string; detail?: string; tone: 'forest' | 'ember' | 'warm' | 'neutral' }> = [
     {
-      label: 'Ticket open',
-      detail: order.orderType === 'DINE_IN' ? 'Dining room' : order.orderType.replace('_', ' '),
+      label: i18n.t('Ticket open'),
+      detail: order.orderType === 'DINE_IN' ? i18n.t('Dining room') : i18n.t(order.orderType),
       tone: 'neutral',
     },
   ];
 
   if (order.status === 'DRAFT') {
-    checkpoints.push({ label: 'Needs confirm', tone: 'ember' });
+    checkpoints.push({ label: i18n.t('Needs confirm'), tone: 'ember' });
   }
 
   if (order.status === 'CONFIRMED') {
-    checkpoints.push({ label: 'Confirmed', tone: 'forest' });
+    checkpoints.push({ label: i18n.t('Confirmed'), tone: 'forest' });
   }
 
   if (order.items.some((item) => item.status === 'NEW')) {
-    checkpoints.push({ label: 'New line items', tone: 'ember' });
+    checkpoints.push({ label: i18n.t('New line items'), tone: 'ember' });
   }
 
   if (order.paymentRequested) {
-    checkpoints.push({ label: 'Guest requested bill', tone: 'warm' });
+    checkpoints.push({ label: i18n.t('Guest requested bill'), tone: 'warm' });
   }
 
   if (invoice) {
     checkpoints.push({
-      label: invoice.status === 'PAID' ? 'Invoice closed' : 'Invoice issued',
+      label: invoice.status === 'PAID' ? i18n.t('Invoice closed') : i18n.t('Invoice issued'),
       detail: formatMoment(invoice.issuedAt),
       tone: invoice.status === 'PAID' ? 'forest' : 'neutral',
     });
@@ -708,8 +736,8 @@ function buildOrderTimeline(order: Order, invoice: Invoice | undefined, payments
 
   if (invoice && invoice.paidAmount > 0 && invoice.paidAmount < invoice.totalAmount) {
     checkpoints.push({
-      label: 'Partial payment',
-      detail: `${formatMoney(invoice.paidAmount)} collected`,
+      label: i18n.t('Partial payment'),
+      detail: i18n.t('{{amount}} collected', { amount: formatMoney(invoice.paidAmount) }),
       tone: 'warm',
     });
   }
@@ -718,25 +746,25 @@ function buildOrderTimeline(order: Order, invoice: Invoice | undefined, payments
     const latestPayment = [...payments]
       .sort((left, right) => (new Date(right.paidAt ?? 0).getTime() - new Date(left.paidAt ?? 0).getTime()))[0];
     checkpoints.push({
-      label: invoice?.status === 'PAID' ? 'Paid in full' : 'Payment logged',
+      label: invoice?.status === 'PAID' ? i18n.t('Paid in full') : i18n.t('Payment logged'),
       detail: latestPayment?.paidAt ? formatMoment(latestPayment.paidAt) : undefined,
       tone: invoice?.status === 'PAID' ? 'forest' : 'neutral',
     });
   }
 
   if (order.status === 'COMPLETED') {
-    checkpoints.push({ label: 'Service completed', tone: 'forest' });
+    checkpoints.push({ label: i18n.t('Service completed'), tone: 'forest' });
   }
 
   if (order.status === 'CANCELLED') {
-    checkpoints.push({ label: 'Ticket cancelled', tone: 'warm' });
+    checkpoints.push({ label: i18n.t('Ticket cancelled'), tone: 'warm' });
   }
 
   return checkpoints;
 }
 
 function formatMoney(value: number) {
-  return new Intl.NumberFormat('en-US', {
+  return new Intl.NumberFormat('vi-VN', {
     style: 'currency',
     currency: 'USD',
     maximumFractionDigits: 2,
@@ -748,7 +776,7 @@ function formatMoment(value: string | null) {
     return undefined;
   }
 
-  return new Intl.DateTimeFormat('en-US', {
+  return new Intl.DateTimeFormat('vi-VN', {
     month: 'short',
     day: 'numeric',
     hour: 'numeric',
@@ -761,6 +789,6 @@ function getErrorMessage(error: unknown) {
     return error.message;
   }
 
-  return 'Something went wrong.';
+  return i18n.t('Something went wrong.');
 }
 

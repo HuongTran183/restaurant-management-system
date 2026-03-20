@@ -92,8 +92,8 @@ describe('CashierWorkbench', () => {
   it('prefills the first open invoice and remaining amount in the payment form', () => {
     renderWorkbench();
 
-    expect(screen.getByLabelText(/invoice/i)).toHaveValue('101');
-    expect(screen.getByLabelText(/amount/i)).toHaveValue(20);
+    expect(screen.getByLabelText(/hóa đơn/i)).toHaveValue('101');
+    expect(screen.getByLabelText(/số tiền/i)).toHaveValue(20);
   });
 
   it('routes pay-now invoice selection into the payment form', async () => {
@@ -105,21 +105,21 @@ describe('CashierWorkbench', () => {
       ],
     });
 
-    await user.click(screen.getAllByRole('button', { name: /pay now/i })[1]);
+    await user.click(screen.getAllByRole('button', { name: /thanh toán ngay/i })[1]);
 
-    expect(screen.getByLabelText(/invoice/i)).toHaveValue('102');
-    expect(screen.getByLabelText(/amount/i)).toHaveValue(40);
+    expect(screen.getByLabelText(/hóa đơn/i)).toHaveValue('102');
+    expect(screen.getByLabelText(/số tiền/i)).toHaveValue(40);
   });
 
   it('records a payment with the selected invoice, amount, and method', async () => {
     const user = userEvent.setup();
     const { onRecordPayment } = renderWorkbench();
 
-    await user.selectOptions(screen.getByLabelText(/method/i), 'CARD');
-    await user.clear(screen.getByLabelText(/amount/i));
-    await user.type(screen.getByLabelText(/amount/i), '18.5');
-    await user.type(screen.getByPlaceholderText(/optional receipt or cashier note/i), 'Split payment');
-    await user.click(screen.getByRole('button', { name: /record payment/i }));
+    await user.selectOptions(screen.getByLabelText(/phương thức/i), 'CARD');
+    await user.clear(screen.getByLabelText(/số tiền/i));
+    await user.type(screen.getByLabelText(/số tiền/i), '18.5');
+    await user.type(screen.getByPlaceholderText(/biên lai|thu ngân/i), 'Split payment');
+    await user.click(screen.getByRole('button', { name: /ghi nhận thanh toán/i }));
 
     expect(onRecordPayment).toHaveBeenCalledWith({
       invoiceId: 101,
@@ -139,11 +139,11 @@ describe('CashierWorkbench', () => {
       invoicePresenceByOrderId: {},
     });
 
-    await user.selectOptions(screen.getByLabelText(/add menu item for ord-001/i), '91');
-    await user.clear(screen.getByLabelText(/add quantity for ord-001/i));
-    await user.type(screen.getByLabelText(/add quantity for ord-001/i), '2');
-    await user.type(screen.getByLabelText(/add note for ord-001/i), 'No cilantro');
-    await user.click(screen.getByRole('button', { name: /add item/i }));
+    await user.selectOptions(screen.getByLabelText(/thêm món cho đơn ord-001/i), '91');
+    await user.clear(screen.getByLabelText(/thêm số lượng cho đơn ord-001/i));
+    await user.type(screen.getByLabelText(/thêm số lượng cho đơn ord-001/i), '2');
+    await user.type(screen.getByLabelText(/thêm ghi chú cho đơn ord-001/i), 'No cilantro');
+    await user.click(screen.getByRole('button', { name: /thêm món/i }));
 
     expect(onAddOrderItem).toHaveBeenCalledWith({
       orderId: 1,
@@ -179,10 +179,10 @@ describe('CashierWorkbench', () => {
       invoicePresenceByOrderId: {},
     });
 
-    await user.clear(screen.getByLabelText(/quantity for pho beef on ord-001/i));
-    await user.type(screen.getByLabelText(/quantity for pho beef on ord-001/i), '3');
-    await user.type(screen.getByLabelText(/line note for pho beef on ord-001/i), 'Extra hot');
-    await user.click(screen.getByRole('button', { name: /update line/i }));
+    await user.clear(screen.getByLabelText(/số lượng cho pho beef trong ord-001/i));
+    await user.type(screen.getByLabelText(/số lượng cho pho beef trong ord-001/i), '3');
+    await user.type(screen.getByLabelText(/ghi chú dòng cho pho beef trong ord-001/i), 'Extra hot');
+    await user.click(screen.getByRole('button', { name: /cập nhật dòng/i }));
 
     expect(onUpdateOrderItem).toHaveBeenCalledWith({
       orderId: 1,
@@ -199,10 +199,10 @@ describe('CashierWorkbench', () => {
       showBillingOperations: true,
     });
 
-    expect(screen.queryByText(/order operations/i)).not.toBeInTheDocument();
-    expect(screen.getByText(/invoices and payments/i)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /record payment/i })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /add item/i })).not.toBeInTheDocument();
+    expect(screen.queryByText(/thao tác đơn/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/hóa đơn và thanh toán/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /ghi nhận thanh toán/i })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /thêm món/i })).not.toBeInTheDocument();
   });
 
   it('renders only the order surface when billing operations are hidden', () => {
@@ -211,16 +211,16 @@ describe('CashierWorkbench', () => {
       showBillingOperations: false,
     });
 
-    expect(screen.getByText(/order operations/i)).toBeInTheDocument();
-    expect(screen.queryByText(/invoices and payments/i)).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /add item/i })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /record payment/i })).not.toBeInTheDocument();
+    expect(screen.getByText(/thao tác đơn/i)).toBeInTheDocument();
+    expect(screen.queryByText(/hóa đơn và thanh toán/i)).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /thêm món/i })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /ghi nhận thanh toán/i })).not.toBeInTheDocument();
   });
 
   it('shows grouped session context above the order cards', () => {
     renderWorkbench();
 
-    expect(screen.getByText(/session lane/i)).toBeInTheDocument();
+    expect(screen.getByText(/khu ca/i)).toBeInTheDocument();
     expect(screen.getAllByText(/t-01 • table 01/i)).not.toHaveLength(0);
   });
 });

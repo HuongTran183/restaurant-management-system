@@ -1,6 +1,7 @@
 import clsx from 'clsx';
 import { useDeferredValue, useMemo, useState } from 'react';
 import type { DiningTable, Reservation, ReservationStatus, TableSession, TableStatus } from '../lib/api';
+import i18n from '../i18n/i18n';
 
 export type FloorOverviewActionState = { kind: 'open-session' | 'close-session' | 'seat-walk-in'; tableId: number } | null;
 
@@ -113,28 +114,28 @@ export function FloorOverview({
     <div className="space-y-5">
       <div className="grid gap-4 xl:grid-cols-[1.3fr_0.7fr] xl:items-end">
         <div className="flex flex-wrap gap-2">
-          <FloorMetric label="Tables" value={String(floorStats.total)} tone="forest" />
-          <FloorMetric label="Live sessions" value={String(floorStats.withSession)} tone="ember" />
-          <FloorMetric label="Active reservations" value={String(floorStats.withReservation)} tone="slate" />
+          <FloorMetric label={i18n.t('Tables')} value={String(floorStats.total)} tone="forest" />
+          <FloorMetric label={i18n.t('Live sessions')} value={String(floorStats.withSession)} tone="ember" />
+          <FloorMetric label={i18n.t('Active reservations')} value={String(floorStats.withReservation)} tone="slate" />
         </div>
 
         <div className="grid gap-3 sm:grid-cols-2">
           <label className="block">
-            <span className="mb-2 block text-xs font-bold uppercase tracking-[0.24em] text-slate">Search</span>
+            <span className="mb-2 block text-xs font-bold uppercase tracking-[0.24em] text-slate">{i18n.t('Search')}</span>
             <input
               className="field"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Table, area, session, reservation"
+              placeholder={i18n.t('Table, area, session, reservation')}
             />
           </label>
 
           <label className="block">
-            <span className="mb-2 block text-xs font-bold uppercase tracking-[0.24em] text-slate">Status</span>
+            <span className="mb-2 block text-xs font-bold uppercase tracking-[0.24em] text-slate">{i18n.t('Status')}</span>
             <select className="field" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as 'ALL' | TableStatus)}>
               {TABLE_STATUSES.map((status) => (
                 <option key={status} value={status}>
-                  {status === 'ALL' ? 'All statuses' : status}
+                  {status === 'ALL' ? i18n.t('All statuses') : i18n.t(status)}
                 </option>
               ))}
             </select>
@@ -152,10 +153,10 @@ export function FloorOverview({
             const canSeatWalkIn = canOpenSession && reservation === undefined && table.status === 'AVAILABLE';
             const actionLabel =
               actionState?.kind === 'seat-walk-in'
-                ? 'Seating...'
+                ? i18n.t('Seating...')
                 : actionState?.kind === 'close-session'
-                  ? 'Closing...'
-                  : 'Opening...';
+                    ? i18n.t('Closing...')
+                    : i18n.t('Opening...');
 
             return (
               <article key={table.id} className="rounded-[28px] border border-ink/10 bg-white/75 p-5 shadow-float">
@@ -165,82 +166,82 @@ export function FloorOverview({
                     <h3 className="mt-2 font-display text-2xl text-ink">{table.name}</h3>
                     <p className="mt-2 text-sm leading-6 text-slate">{table.areaName}</p>
                   </div>
-                  <StatusChip tone={tableStatusTone(table.status)}>{table.status}</StatusChip>
+                  <StatusChip tone={tableStatusTone(table.status)}>{i18n.t(table.status)}</StatusChip>
                 </div>
 
                 <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                  <Detail label="Seats" value={`${table.seatCount}`} />
-                  <Detail label="Area" value={table.areaName || 'Unassigned area'} />
+                  <Detail label={i18n.t('Seats')} value={`${table.seatCount}`} />
+                  <Detail label={i18n.t('Area')} value={table.areaName || i18n.t('Unassigned area')} />
                   <Detail
-                    label="Session"
-                    value={session ? session.sessionCode : 'No open session'}
-                    helper={session ? `Opened ${formatDateTime(session.openedAt)}` : 'No table session is currently open'}
+                    label={i18n.t('Session')}
+                    value={session ? session.sessionCode : i18n.t('No open session')}
+                    helper={session ? `${i18n.t('Opened')} ${formatDateTime(session.openedAt)}` : i18n.t('No table session is currently open')}
                   />
                   <Detail
-                    label="Reservation"
-                    value={reservation ? reservation.reservationCode : 'No active reservation'}
-                    helper={reservation ? `${reservation.customerName} • ${formatDateTime(reservation.reservationTime)}` : 'No reservation assigned'}
+                    label={i18n.t('Reservation')}
+                    value={reservation ? reservation.reservationCode : i18n.t('No active reservation')}
+                    helper={reservation ? `${reservation.customerName} • ${formatDateTime(reservation.reservationTime)}` : i18n.t('No reservation assigned')}
                   />
                 </div>
 
                 <div className="mt-4 border-t border-ink/10 pt-4">
-                  <p className="text-xs font-bold uppercase tracking-[0.22em] text-slate">Next move</p>
+                  <p className="text-xs font-bold uppercase tracking-[0.22em] text-slate">{i18n.t('Next move')}</p>
                   <div className="mt-3 flex flex-wrap gap-2">
                     {canSeatWalkIn ? (
                       <button
-                        aria-label={`Seat walk-in for ${table.code}`}
+                        aria-label={i18n.t('Seat walk-in for {{code}}', { code: table.code })}
                         className="button-chip-primary"
                         disabled={isBusy}
                         onClick={() => onSeatWalkIn?.(table)}
                         type="button"
                       >
-                        {isBusy && actionState?.kind === 'seat-walk-in' ? actionLabel : 'Seat walk-in'}
+                        {isBusy && actionState?.kind === 'seat-walk-in' ? actionLabel : i18n.t('Seat walk-in')}
                       </button>
                     ) : null}
 
                     {canOpenSession ? (
                       <button
-                        aria-label={`Open session for ${table.code}`}
+                        aria-label={i18n.t('Open session for {{code}}', { code: table.code })}
                         className="button-chip"
                         disabled={isBusy}
                         onClick={() => onOpenSession?.(table)}
                         type="button"
                       >
-                        {isBusy && actionState?.kind === 'open-session' ? actionLabel : 'Open session'}
+                        {isBusy && actionState?.kind === 'open-session' ? actionLabel : i18n.t('Open session')}
                       </button>
                     ) : null}
 
                     {session ? (
                       <button
-                        aria-label={`Open order flow for ${table.code}`}
+                        aria-label={i18n.t('Open order flow for {{code}}', { code: table.code })}
                         className="button-chip-primary"
                         onClick={() => onJumpToOrder?.(session, table)}
                         type="button"
                       >
-                        Open order flow
+                        {i18n.t('Open order flow')}
                       </button>
                     ) : null}
 
                     {reservation ? (
                       <button
-                        aria-label={`Open reservation for ${table.code}`}
+                        aria-label={i18n.t('Open reservation for {{code}}', { code: table.code })}
                         className="button-chip"
                         onClick={() => onJumpToReservation?.(reservation, table)}
                         type="button"
                       >
-                        Open reservation
+                        {i18n.t('Open reservation')}
                       </button>
                     ) : null}
 
                     {session ? (
                       <button
-                        aria-label={`Close session for ${table.code}`}
+                        aria-label={i18n.t('Close session for {{code}}', { code: table.code })}
                         className="button-chip"
                         disabled={isBusy}
                         onClick={() => onCloseSession?.(session, table)}
                         type="button"
                       >
-                        {isBusy && actionState?.kind === 'close-session' ? actionLabel : 'Close session'}
+                        {isBusy && actionState?.kind === 'close-session' ? actionLabel : i18n.t('Close session')}
                       </button>
                     ) : null}
                   </div>
@@ -251,7 +252,7 @@ export function FloorOverview({
         </div>
       ) : (
         <div className="rounded-[24px] border border-dashed border-ink/15 bg-white/60 px-4 py-5 text-sm leading-7 text-slate">
-          No tables match the current filters.
+          {i18n.t('No tables match the current filters.')}
         </div>
       )}
     </div>
