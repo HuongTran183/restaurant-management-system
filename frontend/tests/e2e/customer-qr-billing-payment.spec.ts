@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { getDemoQrToken, loginAsAdmin } from './helpers';
+import { API_BASE_URL } from './runtime';
 
 type PageResponse<T> = {
   content: T[];
@@ -31,8 +32,6 @@ type PaymentResponse = {
   status: string;
   amount: number | string;
 };
-
-const API_BASE_URL = (process.env.PLAYWRIGHT_API_BASE_URL ?? 'http://127.0.0.1:18080').replace(/\/$/, '');
 
 function toNumber(v: number | string): number {
   if (typeof v === 'number') return v;
@@ -142,4 +141,3 @@ test('qr order + request bill -> invoice and payment persist', async ({ page, re
   expect(paymentsPage.content[0]?.invoiceId).toBe(invoice.id);
   expect(paymentsPage.content.some((p) => p.status === 'COMPLETED')).toBeTruthy();
 });
-

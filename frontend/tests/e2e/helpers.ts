@@ -1,6 +1,6 @@
 import type { APIRequestContext } from '@playwright/test';
 
-const API_BASE_URL = (process.env.PLAYWRIGHT_API_BASE_URL ?? 'http://127.0.0.1:18080').replace(/\/$/, '');
+import { API_BASE_URL } from './runtime';
 
 type AuthPayload = {
   accessToken: string;

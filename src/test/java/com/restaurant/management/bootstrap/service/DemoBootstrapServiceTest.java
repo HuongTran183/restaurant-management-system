@@ -61,7 +61,7 @@ class DemoBootstrapServiceTest {
                         "T-01",
                         "demo-token",
                         "Demo Table 01",
-                        "http://localhost:5173/qr/demo-token",
+                        "http://127.0.0.1:15173/qr/demo-token",
                         "qr-codes/demo-token.png",
                         null,
                         true
@@ -179,7 +179,7 @@ class DemoBootstrapServiceTest {
                         "T-01",
                         "demo-token",
                         "Demo Table 01",
-                        "http://localhost:5173/qr/demo-token",
+                        "http://127.0.0.1:15173/qr/demo-token",
                         "qr-codes/demo-token.png",
                         null,
                         true

@@ -1,4 +1,5 @@
 import { defineConfig } from '@playwright/test';
+import { FRONTEND_BASE_URL } from './tests/e2e/runtime';
 
 export default defineConfig({
   testDir: './tests/e2e',
@@ -9,7 +10,7 @@ export default defineConfig({
   fullyParallel: false,
   reporter: [['list']],
   use: {
-    baseURL: process.env.PLAYWRIGHT_BASE_URL ?? 'http://127.0.0.1:5173',
+    baseURL: FRONTEND_BASE_URL,
     trace: 'retain-on-failure',
   },
 });

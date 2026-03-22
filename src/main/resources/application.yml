@@ -38,6 +38,14 @@ springdoc:
     path: /swagger-ui.html
 
 app:
+  cors:
+    allowed-origins:
+      - http://localhost:${APP_FRONTEND_PORT:15173}
+      - http://127.0.0.1:${APP_FRONTEND_PORT:15173}
+      - http://localhost:${APP_FRONTEND_PREVIEW_PORT:14173}
+      - http://127.0.0.1:${APP_FRONTEND_PREVIEW_PORT:14173}
+      - http://localhost:3000
+      - http://127.0.0.1:3000
   security:
     jwt:
       issuer: restaurant-management-system
@@ -55,5 +63,5 @@ app:
   storage:
     root: ${APP_STORAGE_ROOT:./data/storage}
   qr:
-    public-base-url: ${APP_QR_PUBLIC_BASE_URL:http://localhost:5173/qr}
+    public-base-url: ${APP_QR_PUBLIC_BASE_URL:http://127.0.0.1:${APP_FRONTEND_PORT:15173}/qr}
 

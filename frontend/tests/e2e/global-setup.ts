@@ -1,7 +1,21 @@
-const FRONTEND_BASE_URL = (process.env.PLAYWRIGHT_BASE_URL ?? 'http://127.0.0.1:5173').replace(/\/$/, '');
-const API_BASE_URL = (process.env.PLAYWRIGHT_API_BASE_URL ?? 'http://127.0.0.1:18080').replace(/\/$/, '');
-const STARTUP_TIMEOUT_MS = 120_000;
-const POLL_INTERVAL_MS = 1_500;
+import {
+  API_HEALTHCHECK_URL,
+  FRONTEND_BASE_URL,
+  POLL_INTERVAL_MS,
+  REQUEST_TIMEOUT_MS,
+  STARTUP_TIMEOUT_MS,
+} from './runtime';
+
+async function fetchWithTimeout(url: string) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
+  try {
+    return await fetch(url, { signal: controller.signal });
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
 
 async function waitForHealthyResponse(url: string) {
   const deadline = Date.now() + STARTUP_TIMEOUT_MS;
@@ -9,12 +23,14 @@ async function waitForHealthyResponse(url: string) {
 
   while (Date.now() < deadline) {
     try {
-      const response = await fetch(url);
+      const response = await fetchWithTimeout(url);
       if (response.ok) {
         return;
       }
 
-      lastError = new Error(`Received ${response.status} from ${url}`);
+      lastError = new Error(
+        `Received ${response.status} from ${url}. Check PLAYWRIGHT_API_BASE_URL / PLAYWRIGHT_API_HEALTHCHECK_URL and confirm the expected host or compose stack is running.`,
+      );
     } catch (error) {
       lastError = error;
     }
@@ -32,6 +48,6 @@ async function waitForHealthyResponse(url: string) {
 export default async function globalSetup() {
   await Promise.all([
     waitForHealthyResponse(`${FRONTEND_BASE_URL}/`),
-    waitForHealthyResponse(`${API_BASE_URL}/api/public/menu`),
+    waitForHealthyResponse(API_HEALTHCHECK_URL),
   ]);
 }
