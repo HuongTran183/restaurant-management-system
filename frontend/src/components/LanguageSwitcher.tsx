@@ -4,7 +4,7 @@ import i18n from '../i18n/i18n';
 import type { AppLanguage } from '../i18n/language';
 import { setStoredLanguage } from '../i18n/language';
 
-export function LanguageSwitcher() {
+export function LanguageSwitcher({ className }: { className?: string }) {
   const [language, setLanguage] = useState<AppLanguage>(() => (i18n.language === 'en' ? 'en' : 'vi'));
 
   useEffect(() => {
@@ -16,7 +16,7 @@ export function LanguageSwitcher() {
   }, []);
 
   return (
-    <div className="fixed right-4 top-4 z-50">
+    <div className={className ?? 'flex items-center'}>
       <label className="sr-only" htmlFor="language-switcher">
         Language
       </label>

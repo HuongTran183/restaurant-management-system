@@ -2,6 +2,7 @@ import clsx from 'clsx';
 import type { FormEvent, ReactNode } from 'react';
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import { Link, Navigate, NavLink, Route, Routes, useNavigate, useParams } from 'react-router-dom';
 import {
   ApiError,
@@ -22,12 +23,14 @@ import {
 } from './lib/api';
 import { CashierWorkbench } from './components/CashierWorkbench';
 import { FloorOverview, type FloorOverviewActionState } from './components/FloorOverview';
+import { LanguageSwitcher } from './components/LanguageSwitcher';
 import { clearSession, msUntilSessionRefresh, readSession, saveSession, shouldRefreshSession } from './lib/session';
 import i18n from './i18n/i18n';
 
 const initialSession = typeof window === 'undefined' ? null : readSession();
 
 export default function App() {
+  const { t } = useTranslation();
   const [session, setSession] = useState<AuthSession | null>(initialSession);
   const [isSessionReady, setIsSessionReady] = useState(initialSession === null);
 
@@ -109,15 +112,18 @@ export default function App() {
             </div>
             <div>
               <p className="font-display text-2xl leading-none">Restaurant OS</p>
-              <p className="text-sm text-slate">POS, QR dining, and booking in one orbit</p>
+              <p className="text-sm text-slate">{t('POS, QR dining, and booking in one orbit')}</p>
             </div>
           </Link>
 
-          <nav className="hidden items-center gap-2 md:flex">
-            <TopNavLink to="/">Menu</TopNavLink>
-            <TopNavLink to="/book">Reservations</TopNavLink>
-            <TopNavLink to="/staff">Staff</TopNavLink>
-          </nav>
+          <div className="flex items-center gap-4">
+            <nav className="hidden items-center gap-2 md:flex">
+              <TopNavLink to="/">{t('Menu')}</TopNavLink>
+              <TopNavLink to="/book">{t('Reservations')}</TopNavLink>
+              <TopNavLink to="/staff">{t('STAFF')}</TopNavLink>
+            </nav>
+            <LanguageSwitcher />
+          </div>
         </div>
       </header>
 
@@ -147,6 +153,7 @@ export default function App() {
 }
 
 function HomePage() {
+  useTranslation();
   const menuQuery = useQuery({ queryKey: ['public-menu'], queryFn: publicApi.menu });
   const [search, setSearch] = useState('');
   const deferredSearch = useDeferredValue(search);
@@ -275,7 +282,7 @@ function HomePage() {
               ))}
               {!filteredItems.length ? (
                 <div className="rounded-[28px] border border-dashed border-ink/15 bg-white/65 p-6 text-sm leading-7 text-slate md:col-span-2 xl:col-span-3">
-                  No dishes match this search yet.
+                  {i18n.t('No dishes match this search yet.')}
                 </div>
               ) : null}
             </div>
@@ -286,6 +293,7 @@ function HomePage() {
   );
 }
 function ReservationPage() {
+  useTranslation();
   const [form, setForm] = useState({
     customerName: '',
     phone: '',
@@ -440,6 +448,7 @@ function ReservationPage() {
 }
 
 function QrExperiencePage() {
+  useTranslation();
   const { token = '' } = useParams();
   const [search, setSearch] = useState('');
   const [note, setNote] = useState('');
@@ -624,6 +633,7 @@ function StaffLoginPage({
   session: AuthSession | null;
   isSessionReady: boolean;
 }) {
+  useTranslation();
   const navigate = useNavigate();
   const [form, setForm] = useState({ username: 'admin', password: 'Admin@123456' });
 
@@ -705,6 +715,7 @@ function StaffDashboardPage({
   onLogout: () => void;
   onRefreshSession: (session: AuthSession) => Promise<AuthSession | null>;
 }) {
+  useTranslation();
   const queryClient = useQueryClient();
   const userRoles = session?.user.roles ?? [];
   const canManageFloor = userRoles.some((role) => role === 'ADMIN' || role === 'MANAGER' || role === 'WAITER');
@@ -1190,60 +1201,17 @@ function StaffDashboardPage({
 
   return (
     <div className="space-y-8">
-      <section className="panel overflow-hidden px-6 py-8 sm:px-8">
-        <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-[0.24em] text-slate">{i18n.t('Staff workspace')}</p>
-            <h1 className="mt-3 font-display text-4xl text-ink">
-              {i18n.t('Welcome back, {{name}}.', { name: session?.user.fullName })}
-            </h1>
-            <p className="mt-4 max-w-2xl text-base leading-8 text-slate">
-              {activeLaneBody}
-            </p>
-            <div className="mt-4 flex flex-wrap gap-2">
-              {userRoles.map((role) => (
-                <RoleChip key={role} role={role} />
-              ))}
-            </div>
-          </div>
-          <div className="space-y-3">
-            <div className="rounded-[24px] border border-ink/10 bg-white/70 px-4 py-4">
-              <p className="text-xs font-bold uppercase tracking-[0.24em] text-slate">{i18n.t('Active lane')}</p>
-              <p className="mt-2 font-semibold text-ink">{activeLaneTitle}</p>
-              {showLaneSwitcher ? (
-                <div className="mt-3 inline-flex flex-wrap rounded-full border border-ink/10 bg-cream/70 p-1">
-                  {(['ALL', 'FLOOR', 'BILLING'] as WorkspaceLane[]).map((lane) => (
-                    <button
-                      key={lane}
-                      className={clsx(
-                        'rounded-full px-4 py-2 text-xs font-bold uppercase tracking-[0.18em] transition',
-                        workspaceLane === lane ? 'bg-forest text-cream' : 'text-slate hover:text-ink',
-                      )}
-                      onClick={() => setWorkspaceLane(lane)}
-                      type="button"
-                    >
-                      {lane === 'ALL'
-                        ? i18n.t('All lanes')
-                        : lane === 'FLOOR'
-                          ? i18n.t('Floor lane')
-                          : i18n.t('Billing lane')}
-                    </button>
-                  ))}
-                </div>
-              ) : null}
-            </div>
-
-            <div className="flex flex-wrap gap-3">
-              <button className="button-secondary" onClick={refreshWorkspace} type="button">
-                {i18n.t('Refresh workspace')}
-              </button>
-              <button className="button-secondary" onClick={onLogout} type="button">
-                {i18n.t('Log out')}
-              </button>
-            </div>
-          </div>
-        </div>
-      </section>
+      <StaffWorkspaceHero
+        activeLaneBody={activeLaneBody}
+        activeLaneTitle={activeLaneTitle}
+        onLogout={onLogout}
+        onRefreshWorkspace={refreshWorkspace}
+        onWorkspaceLaneChange={(lane) => setWorkspaceLane(lane)}
+        session={session}
+        showLaneSwitcher={showLaneSwitcher}
+        userRoles={userRoles}
+        workspaceLane={workspaceLane}
+      />
 
       {dashboardQuery.isLoading ? <LoadingState label={i18n.t('Loading dashboard summary')} /> : null}
       {dashboardQuery.error ? <ErrorState error={dashboardQuery.error} /> : null}
@@ -1297,266 +1265,595 @@ function StaffDashboardPage({
         {showFloorLane ? (
           <>
             <div ref={reservationPanelRef}>
-              <DataPanel
-                testId="reservation-queue-panel"
-                title={i18n.t('Reservation queue')}
-                subtitle={i18n.t('Confirm, seat, and complete reservations directly from the staff surface.')}
-              >
-                <div className="mb-5 grid gap-3 md:grid-cols-[auto_1fr_auto] md:items-end">
-                  <div className="inline-flex rounded-full border border-ink/10 bg-white/80 p-1">
-                    {(['ACTIVE', 'HISTORY', 'ALL'] as ReservationQueueScope[]).map((scope) => (
-                      <button
-                        key={scope}
-                        className={clsx(
-                          'rounded-full px-4 py-2 text-xs font-bold uppercase tracking-[0.18em] transition',
-                          reservationQueueScope === scope ? 'bg-forest text-cream' : 'text-slate hover:text-ink',
-                        )}
-                        onClick={() => setReservationQueueScope(scope)}
-                        type="button"
-                      >
-                        {scope === 'ACTIVE'
-                          ? i18n.t('Active')
-                          : scope === 'HISTORY'
-                            ? i18n.t('History')
-                            : i18n.t('All')}
-                      </button>
-                    ))}
-                  </div>
-
-                  <label className="block">
-                    <span className="mb-2 block text-xs font-bold uppercase tracking-[0.24em] text-slate">
-                      {i18n.t('Search reservations')}
-                    </span>
-                    <input
-                      className="field"
-                      onChange={(event) => setReservationSearch(event.target.value)}
-                      placeholder={i18n.t('Code, customer, or phone')}
-                      value={reservationSearch}
-                    />
-                  </label>
-
-                  <button
-                    className="button-chip"
-                    disabled={reservationSearch.trim() === '' && reservationQueueScope === 'ACTIVE' && reservationHostFilter === 'ALL' && reservationAreaFilter === 'ALL'}
-                    onClick={() => {
-                      setReservationQueueScope('ACTIVE');
-                      setReservationHostFilter('ALL');
-                      setReservationAreaFilter('ALL');
-                      setReservationSearch('');
-                    }}
-                    type="button"
-                  >
-                    {i18n.t('Clear filters')}
-                  </button>
-                </div>
-
-                <div className="mb-5 grid gap-3 xl:grid-cols-[1.2fr_16rem]">
-                  <div className="flex flex-wrap gap-2">
-                    {([
-                      ['ALL', i18n.t('All arrivals')],
-                      ['NEEDS_TABLE', i18n.t('Need table')],
-                      ['NEXT_SERVICE', i18n.t('Next 3h')],
-                      ['LARGE_PARTY', i18n.t('Large party')],
-                    ] as Array<[ReservationHostFilter, string]>).map(([filterKey, label]) => (
-                      <button
-                        key={filterKey}
-                        className={clsx(
-                          'button-chip',
-                          reservationHostFilter === filterKey && 'border-forest/25 bg-forest/10 text-forest',
-                        )}
-                        onClick={() => setReservationHostFilter(filterKey)}
-                        type="button"
-                      >
-                        {label}
-                      </button>
-                    ))}
-                  </div>
-
-                  <label className="block">
-                    <span className="mb-2 block text-xs font-bold uppercase tracking-[0.24em] text-slate">
-                      {i18n.t('Area focus')}
-                    </span>
-                    <select
-                      className="field"
-                      onChange={(event) => setReservationAreaFilter(event.target.value)}
-                      value={reservationAreaFilter}
-                    >
-                      <option value="ALL">{i18n.t('All areas')}</option>
-                      <option value="__ANY__">{i18n.t('Any area')}</option>
-                      {reservationAreaOptions.map((area) => (
-                        <option key={area} value={area}>
-                          {area}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                </div>
-
-                <div className="mb-5 grid gap-3 md:grid-cols-3">
-                  <MiniQueueStat
-                    label={i18n.t('Visible')}
-                    value={String(reservationHostSummary.total)}
-                    helper={i18n.t('after current filters')}
-                  />
-                  <MiniQueueStat
-                    label={i18n.t('Need table')}
-                    value={String(reservationHostSummary.needsTable)}
-                    helper={i18n.t('confirmed parties still unassigned')}
-                  />
-                  <MiniQueueStat
-                    label={i18n.t('Next 3h')}
-                    value={String(reservationHostSummary.nextService)}
-                    helper={i18n.t('upcoming arrival pressure')}
-                  />
-                </div>
-
-              {reservationsQuery.isLoading ? <LoadingState label="Loading reservations" /> : null}
-              {reservationsQuery.error ? <ErrorState error={reservationsQuery.error} /> : null}
-              {tablesQuery.isLoading ? <LoadingState label="Loading table options" /> : null}
-              {tablesQuery.error ? <ErrorState error={tablesQuery.error} /> : null}
-              {reservationActionMutation.error ? <div className="mt-4"><InlineError error={reservationActionMutation.error} /></div> : null}
-              {reservationsQuery.data ? (
-                <ReservationList
-                  availableTables={tablesQuery.data ?? []}
-                  isMutating={reservationActionMutation.isPending}
-                  onAction={(action) => reservationActionMutation.mutate(action)}
-                  reservations={visibleReservations}
-                />
-              ) : null}
-              </DataPanel>
+              <StaffReservationQueuePanel
+                actionError={reservationActionMutation.error}
+                availableTables={tablesQuery.data ?? []}
+                areaFilter={reservationAreaFilter}
+                areaOptions={reservationAreaOptions}
+                hostFilter={reservationHostFilter}
+                isMutating={reservationActionMutation.isPending}
+                onAction={(action) => reservationActionMutation.mutate(action)}
+                onAreaFilterChange={setReservationAreaFilter}
+                onClearFilters={() => {
+                  setReservationQueueScope('ACTIVE');
+                  setReservationHostFilter('ALL');
+                  setReservationAreaFilter('ALL');
+                  setReservationSearch('');
+                }}
+                onHostFilterChange={setReservationHostFilter}
+                onScopeChange={setReservationQueueScope}
+                onSearchChange={setReservationSearch}
+                quickSummary={reservationHostSummary}
+                reservations={visibleReservations}
+                reservationsError={reservationsQuery.error}
+                reservationsLoading={reservationsQuery.isLoading}
+                scope={reservationQueueScope}
+                search={reservationSearch}
+                tableOptionsError={tablesQuery.error}
+                tableOptionsLoading={tablesQuery.isLoading}
+              />
             </div>
 
-            <DataPanel
-              testId="service-requests-panel"
-              title={i18n.t('Open service requests')}
-              subtitle={i18n.t('Resolve waiter calls and bill requests as soon as they land.')}
-            >
-              {serviceRequestsQuery.isLoading ? <LoadingState label={i18n.t('Loading service requests')} /> : null}
-              {serviceRequestsQuery.error ? <ErrorState error={serviceRequestsQuery.error} /> : null}
-              {serviceRequestMutation.error ? <div className="mt-4"><InlineError error={serviceRequestMutation.error} /></div> : null}
-              {serviceRequestsQuery.data ? (
-                <ServiceRequestList
-                  isMutating={serviceRequestMutation.isPending}
-                  onResolve={(requestId) => serviceRequestMutation.mutate(requestId)}
-                  requests={serviceRequestsQuery.data.content}
-                />
-              ) : null}
-            </DataPanel>
+            <StaffServiceRequestsPanel
+              actionError={serviceRequestMutation.error}
+              isLoading={serviceRequestsQuery.isLoading}
+              isMutating={serviceRequestMutation.isPending}
+              onResolve={(requestId) => serviceRequestMutation.mutate(requestId)}
+              requests={serviceRequestsQuery.data?.content ?? []}
+              requestsError={serviceRequestsQuery.error}
+            />
           </>
         ) : null}
 
         {showFloorLane || showBillingLane ? (
-          <div ref={workbenchPanelRef}>
-            <DataPanel testId="operations-workbench" title={workbenchTitle} subtitle={workbenchSubtitle}>
-              {showFloorLane ? (
-                <div className="mb-5 grid gap-3 md:grid-cols-[1fr_auto] md:items-end">
-                  <label className="block">
-                    <span className="mb-2 block text-xs font-bold uppercase tracking-[0.24em] text-slate">
-                      {i18n.t('Search orders')}
-                    </span>
-                    <input
-                      className="field"
-                      onChange={(event) => setOrderSearch(event.target.value)}
-                      placeholder={i18n.t('Order code or note')}
-                      value={orderSearch}
-                    />
-                  </label>
-
-                  <button
-                    className="button-chip"
-                    disabled={orderSearch.trim() === '' && orderSessionFilter === null}
-                    onClick={() => {
-                      setOrderSearch('');
-                      setOrderSessionFilter(null);
-                    }}
-                    type="button"
-                  >
-                    {i18n.t('Clear order focus')}
-                  </button>
-                </div>
-              ) : null}
-
-              {activeSession ? (
-                <div className="mb-5 rounded-[24px] border border-forest/15 bg-forest/5 px-4 py-4">
-                  <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                    <div>
-                      <p className="text-xs font-bold uppercase tracking-[0.24em] text-forest">
-                        {i18n.t('Focused session')}
-                      </p>
-                      <p className="mt-2 text-sm leading-7 text-slate">
-                        {activeSession.tableCode} • {activeSession.tableName} • {i18n.t('Opened')} {formatDateTime(activeSession.openedAt)}
-                      </p>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      {visibleOrders.length === 0 ? (
-                        <button
-                          className="button-chip-primary"
-                          disabled={createStaffOrderMutation.isPending}
-                          onClick={() =>
-                            createStaffOrderMutation.mutate({
-                              note: `${i18n.t('Staff order started from')} ${activeSession.tableCode}`,
-                              tableSessionId: activeSession.id,
-                            })
-                          }
-                          type="button"
-                        >
-                          {createStaffOrderMutation.isPending ? i18n.t('Starting...') : i18n.t('Create dine-in order')}
-                        </button>
-                      ) : null}
-                      <button className="button-chip" onClick={() => setOrderSessionFilter(null)} type="button">
-                        {i18n.t('Release focus')}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ) : null}
-
-            {showFloorLane && ordersQuery.isLoading ? <LoadingState label={i18n.t('Loading orders')} /> : null}
-            {showFloorLane && ordersQuery.error ? <ErrorState error={ordersQuery.error} /> : null}
-            {showFloorLane && staffMenuQuery.isLoading ? <LoadingState label={i18n.t('Loading menu items for POS')} /> : null}
-            {showFloorLane && staffMenuQuery.error ? <ErrorState error={staffMenuQuery.error} /> : null}
-            {showBillingLane && invoicesQuery.isLoading ? <LoadingState label={i18n.t('Loading invoices')} /> : null}
-            {showBillingLane && invoicesQuery.error ? <ErrorState error={invoicesQuery.error} /> : null}
-            {showBillingLane && paymentsQuery.isLoading ? <LoadingState label={i18n.t('Loading payments')} /> : null}
-            {showBillingLane && paymentsQuery.error ? <ErrorState error={paymentsQuery.error} /> : null}
-            {createStaffOrderMutation.error ? <div className="mb-4"><InlineError error={createStaffOrderMutation.error} /></div> : null}
-            {(!showFloorLane || (ordersQuery.data && staffMenuQuery.data)) && (!showBillingLane || (invoicesQuery.data && paymentsQuery.data)) ? (
-              <CashierWorkbench
-                orders={ordersQuery.data?.content ?? []}
-                invoices={invoicesQuery.data?.content ?? []}
-                payments={paymentsQuery.data?.content ?? []}
-                menuItems={staffMenuQuery.data?.items ?? []}
-                sessionLabelById={sessionLabelById}
-                isBusy={workbenchBusy}
-                orderError={workbenchOrderError}
-                invoiceError={createInvoiceMutation.error}
-                paymentError={recordPaymentMutation.error}
-                showOrderOperations={showFloorLane}
-                showBillingOperations={showBillingLane}
-                invoicePresenceByOrderId={invoicePresenceByOrderId}
-                onAddOrderItem={(payload) => orderItemMutation.mutate({ kind: 'add', ...payload })}
-                onCancelOrder={(orderId) => orderActionMutation.mutate({ kind: 'cancel', orderId })}
-                onConfirmOrder={(orderId) => orderActionMutation.mutate({ kind: 'confirm', orderId })}
-                onCreateInvoice={(order) => createInvoiceMutation.mutate({ orderId: order.id, orderCode: order.orderCode })}
-                onRecordPayment={(payload) => recordPaymentMutation.mutate(payload)}
-                onUpdateOrderItem={(payload) => orderItemMutation.mutate({ kind: 'update', ...payload })}
-              />
-            ) : null}
-            </DataPanel>
+          <div ref={workbenchPanelRef} className={clsx(showFloorLane && showBillingLane ? 'xl:col-span-2' : undefined)}>
+            <StaffOperationsWorkbenchPanel
+              activeSession={activeSession}
+              canRenderWorkbench={(!showFloorLane || Boolean(ordersQuery.data)) && (!showBillingLane || Boolean(invoicesQuery.data && paymentsQuery.data))}
+              createStaffOrderError={createStaffOrderMutation.error}
+              createStaffOrderPending={createStaffOrderMutation.isPending}
+              invoices={invoicesQuery.data?.content ?? []}
+              invoicesError={invoicesQuery.error}
+              invoicesLoading={invoicesQuery.isLoading}
+              invoiceError={createInvoiceMutation.error}
+              invoicePresenceByOrderId={invoicePresenceByOrderId}
+              isBusy={workbenchBusy}
+              menuItems={staffMenuQuery.data?.items ?? []}
+              menuItemsLoadFailed={Boolean(staffMenuQuery.error)}
+              onAddOrderItem={(payload) => orderItemMutation.mutate({ kind: 'add', ...payload })}
+              onCancelOrder={(orderId) => orderActionMutation.mutate({ kind: 'cancel', orderId })}
+              onClearOrderFocus={() => {
+                setOrderSearch('');
+                setOrderSessionFilter(null);
+              }}
+              onConfirmOrder={(orderId) => orderActionMutation.mutate({ kind: 'confirm', orderId })}
+              onCreateInvoice={(order) => createInvoiceMutation.mutate({ orderId: order.id, orderCode: order.orderCode })}
+              onCreateStaffOrder={(payload) => createStaffOrderMutation.mutate(payload)}
+              onRecordPayment={(payload) => recordPaymentMutation.mutate(payload)}
+              onReleaseSessionFocus={() => setOrderSessionFilter(null)}
+              onUpdateOrderItem={(payload) => orderItemMutation.mutate({ kind: 'update', ...payload })}
+              onUpdateOrderSearch={setOrderSearch}
+              orderSearch={orderSearch}
+              orderSessionFilter={orderSessionFilter}
+              orders={ordersQuery.data?.content ?? []}
+              ordersError={ordersQuery.error}
+              ordersLoading={ordersQuery.isLoading}
+              payments={paymentsQuery.data?.content ?? []}
+              paymentsError={paymentsQuery.error}
+              paymentsLoading={paymentsQuery.isLoading}
+              paymentError={recordPaymentMutation.error}
+              sessionLabelById={sessionLabelById}
+              showBillingLane={showBillingLane}
+              showFloorLane={showFloorLane}
+              staffMenuError={staffMenuQuery.error}
+              staffMenuLoading={staffMenuQuery.isLoading}
+              title={workbenchTitle}
+              visibleOrderCount={visibleOrders.length}
+              workbenchOrderError={workbenchOrderError}
+              subtitle={workbenchSubtitle}
+            />
           </div>
         ) : null}
 
         {showFloorLane ? (
-          <DataPanel testId="open-table-sessions-panel" title="Open table sessions" subtitle="See which tables already have a live session before seating or check-in.">
-            {tableSessionsQuery.isLoading ? <LoadingState label="Loading table sessions" /> : null}
-            {tableSessionsQuery.error ? <ErrorState error={tableSessionsQuery.error} /> : null}
-            {tableSessionsQuery.data ? <TableSessionList sessions={tableSessionsQuery.data} /> : null}
-          </DataPanel>
+          <div className="xl:col-span-2">
+            <StaffOpenTableSessionsPanel
+              isLoading={tableSessionsQuery.isLoading}
+              sessions={tableSessionsQuery.data ?? []}
+              sessionsError={tableSessionsQuery.error}
+            />
+          </div>
         ) : null}
       </section>
     </div>
   );
 }
+
+type ReservationQueueSummary = {
+  total: number;
+  needsTable: number;
+  largeParty: number;
+  nextService: number;
+};
+
+function StaffWorkspaceHero({
+  activeLaneBody,
+  activeLaneTitle,
+  onLogout,
+  onRefreshWorkspace,
+  onWorkspaceLaneChange,
+  session,
+  showLaneSwitcher,
+  userRoles,
+  workspaceLane,
+}: {
+  activeLaneBody: string;
+  activeLaneTitle: string;
+  onLogout: () => void;
+  onRefreshWorkspace: () => void;
+  onWorkspaceLaneChange: (lane: WorkspaceLane) => void;
+  session: AuthSession | null;
+  showLaneSwitcher: boolean;
+  userRoles: AuthSession['user']['roles'];
+  workspaceLane: WorkspaceLane;
+}) {
+  return (
+    <section className="panel overflow-hidden px-6 py-8 sm:px-8">
+      <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-[0.24em] text-slate">{i18n.t('Staff workspace')}</p>
+          <h1 className="mt-3 font-display text-4xl text-ink">
+            {i18n.t('Welcome back, {{name}}.', { name: session?.user.fullName })}
+          </h1>
+          <p className="mt-4 max-w-2xl text-base leading-8 text-slate">{activeLaneBody}</p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            {userRoles.map((role) => (
+              <RoleChip key={role} role={role} />
+            ))}
+          </div>
+        </div>
+        <div className="space-y-3">
+          <div className="rounded-[24px] border border-ink/10 bg-white/70 px-4 py-4">
+            <p className="text-xs font-bold uppercase tracking-[0.24em] text-slate">{i18n.t('Active lane')}</p>
+            <p className="mt-2 font-semibold text-ink">{activeLaneTitle}</p>
+            {showLaneSwitcher ? (
+              <div className="mt-3 inline-flex flex-wrap rounded-full border border-ink/10 bg-cream/70 p-1">
+                {(['ALL', 'FLOOR', 'BILLING'] as WorkspaceLane[]).map((lane) => (
+                  <button
+                    key={lane}
+                    className={clsx(
+                      'rounded-full px-4 py-2 text-xs font-bold uppercase tracking-[0.18em] transition',
+                      workspaceLane === lane ? 'bg-forest text-cream' : 'text-slate hover:text-ink',
+                    )}
+                    onClick={() => onWorkspaceLaneChange(lane)}
+                    type="button"
+                  >
+                    {lane === 'ALL'
+                      ? i18n.t('All lanes')
+                      : lane === 'FLOOR'
+                        ? i18n.t('Floor lane')
+                        : i18n.t('Billing lane')}
+                  </button>
+                ))}
+              </div>
+            ) : null}
+          </div>
+
+          <div className="flex flex-wrap gap-3">
+            <button className="button-secondary" onClick={onRefreshWorkspace} type="button">
+              {i18n.t('Refresh workspace')}
+            </button>
+            <button className="button-secondary" onClick={onLogout} type="button">
+              {i18n.t('Log out')}
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function StaffReservationQueuePanel({
+  actionError,
+  availableTables,
+  areaFilter,
+  areaOptions,
+  hostFilter,
+  isMutating,
+  onAction,
+  onAreaFilterChange,
+  onClearFilters,
+  onHostFilterChange,
+  onScopeChange,
+  onSearchChange,
+  quickSummary,
+  reservations,
+  reservationsError,
+  reservationsLoading,
+  scope,
+  search,
+  tableOptionsError,
+  tableOptionsLoading,
+}: {
+  actionError: unknown;
+  availableTables: DiningTable[];
+  areaFilter: string;
+  areaOptions: string[];
+  hostFilter: ReservationHostFilter;
+  isMutating: boolean;
+  onAction: (action: ReservationActionInput) => void;
+  onAreaFilterChange: (nextValue: string) => void;
+  onClearFilters: () => void;
+  onHostFilterChange: (filter: ReservationHostFilter) => void;
+  onScopeChange: (scope: ReservationQueueScope) => void;
+  onSearchChange: (nextValue: string) => void;
+  quickSummary: ReservationQueueSummary;
+  reservations: Reservation[];
+  reservationsError: unknown;
+  reservationsLoading: boolean;
+  scope: ReservationQueueScope;
+  search: string;
+  tableOptionsError: unknown;
+  tableOptionsLoading: boolean;
+}) {
+  const canClearFilters = search.trim() !== '' || scope !== 'ACTIVE' || hostFilter !== 'ALL' || areaFilter !== 'ALL';
+
+  return (
+    <DataPanel
+      testId="reservation-queue-panel"
+      title={i18n.t('Reservation queue')}
+      subtitle={i18n.t('Confirm, seat, and complete reservations directly from the staff surface.')}
+    >
+      <div className="mb-5 grid gap-3 lg:grid-cols-[auto_minmax(0,1fr)_auto] lg:items-end">
+        <div className="inline-flex w-fit rounded-full border border-ink/10 bg-white/80 p-1">
+          {(['ACTIVE', 'HISTORY', 'ALL'] as ReservationQueueScope[]).map((queueScope) => (
+            <button
+              key={queueScope}
+              className={clsx(
+                'rounded-full px-4 py-2 text-xs font-bold uppercase tracking-[0.18em] transition',
+                scope === queueScope ? 'bg-forest text-cream' : 'text-slate hover:text-ink',
+              )}
+              onClick={() => onScopeChange(queueScope)}
+              type="button"
+            >
+              {queueScope === 'ACTIVE'
+                ? i18n.t('Active')
+                : queueScope === 'HISTORY'
+                  ? i18n.t('History')
+                  : i18n.t('All')}
+            </button>
+          ))}
+        </div>
+
+        <label className="block min-w-0">
+          <span className="mb-2 block text-xs font-bold uppercase tracking-[0.24em] text-slate">
+            {i18n.t('Search reservations')}
+          </span>
+          <input
+            className="field"
+            onChange={(event) => onSearchChange(event.target.value)}
+            placeholder={i18n.t('Code, customer, or phone')}
+            value={search}
+          />
+        </label>
+
+        <button className="button-chip" disabled={!canClearFilters} onClick={onClearFilters} type="button">
+          {i18n.t('Clear filters')}
+        </button>
+      </div>
+
+      <div className="mb-5 grid gap-3 xl:grid-cols-[1.2fr_16rem]">
+        <div className="flex flex-wrap gap-2">
+          {([
+            ['ALL', i18n.t('All arrivals')],
+            ['NEEDS_TABLE', i18n.t('Need table')],
+            ['NEXT_SERVICE', i18n.t('Next 3h')],
+            ['LARGE_PARTY', i18n.t('Large party')],
+          ] as Array<[ReservationHostFilter, string]>).map(([filterKey, label]) => (
+            <button
+              key={filterKey}
+              className={clsx('button-chip', hostFilter === filterKey && 'border-forest/25 bg-forest/10 text-forest')}
+              onClick={() => onHostFilterChange(filterKey)}
+              type="button"
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
+        <label className="block">
+          <span className="mb-2 block text-xs font-bold uppercase tracking-[0.24em] text-slate">
+            {i18n.t('Area focus')}
+          </span>
+          <select className="field" onChange={(event) => onAreaFilterChange(event.target.value)} value={areaFilter}>
+            <option value="ALL">{i18n.t('All areas')}</option>
+            <option value="__ANY__">{i18n.t('Any area')}</option>
+            {areaOptions.map((area) => (
+              <option key={area} value={area}>
+                {area}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+
+      <div className="mb-5 grid gap-3 md:grid-cols-3">
+        <MiniQueueStat label={i18n.t('Visible')} value={String(quickSummary.total)} helper={i18n.t('after current filters')} />
+        <MiniQueueStat
+          label={i18n.t('Need table')}
+          value={String(quickSummary.needsTable)}
+          helper={i18n.t('confirmed parties still unassigned')}
+        />
+        <MiniQueueStat
+          label={i18n.t('Next 3h')}
+          value={String(quickSummary.nextService)}
+          helper={i18n.t('upcoming arrival pressure')}
+        />
+      </div>
+
+      {reservationsLoading ? <LoadingState label={i18n.t('Loading reservations')} /> : null}
+      {reservationsError ? <ErrorState error={reservationsError} /> : null}
+      {tableOptionsLoading ? <LoadingState label={i18n.t('Loading table options')} /> : null}
+      {tableOptionsError ? <ErrorState error={tableOptionsError} /> : null}
+      {actionError ? (
+        <div className="mt-4">
+          <InlineError error={actionError} />
+        </div>
+      ) : null}
+      {!reservationsLoading && !reservationsError ? (
+        <ReservationList
+          availableTables={availableTables}
+          isMutating={isMutating}
+          onAction={onAction}
+          reservations={reservations}
+        />
+      ) : null}
+    </DataPanel>
+  );
+}
+
+function StaffServiceRequestsPanel({
+  actionError,
+  isLoading,
+  isMutating,
+  onResolve,
+  requests,
+  requestsError,
+}: {
+  actionError: unknown;
+  isLoading: boolean;
+  isMutating: boolean;
+  onResolve: (requestId: number) => void;
+  requests: ServiceRequest[];
+  requestsError: unknown;
+}) {
+  return (
+    <DataPanel
+      testId="service-requests-panel"
+      title={i18n.t('Open service requests')}
+      subtitle={i18n.t('Resolve waiter calls and bill requests as soon as they land.')}
+    >
+      {isLoading ? <LoadingState label={i18n.t('Loading service requests')} /> : null}
+      {requestsError ? <ErrorState error={requestsError} /> : null}
+      {actionError ? (
+        <div className="mt-4">
+          <InlineError error={actionError} />
+        </div>
+      ) : null}
+      {!isLoading && !requestsError ? (
+        <ServiceRequestList isMutating={isMutating} onResolve={onResolve} requests={requests} />
+      ) : null}
+    </DataPanel>
+  );
+}
+
+function StaffOperationsWorkbenchPanel({
+  activeSession,
+  canRenderWorkbench,
+  createStaffOrderError,
+  createStaffOrderPending,
+  invoices,
+  invoicesError,
+  invoicesLoading,
+  invoiceError,
+  invoicePresenceByOrderId,
+  isBusy,
+  menuItems,
+  menuItemsLoadFailed,
+  onAddOrderItem,
+  onCancelOrder,
+  onClearOrderFocus,
+  onConfirmOrder,
+  onCreateInvoice,
+  onCreateStaffOrder,
+  onRecordPayment,
+  onReleaseSessionFocus,
+  onUpdateOrderItem,
+  onUpdateOrderSearch,
+  orderSearch,
+  orderSessionFilter,
+  orders,
+  ordersError,
+  ordersLoading,
+  payments,
+  paymentsError,
+  paymentsLoading,
+  paymentError,
+  sessionLabelById,
+  showBillingLane,
+  showFloorLane,
+  staffMenuError,
+  staffMenuLoading,
+  subtitle,
+  title,
+  visibleOrderCount,
+  workbenchOrderError,
+}: {
+  activeSession: TableSession | null;
+  canRenderWorkbench: boolean;
+  createStaffOrderError: unknown;
+  createStaffOrderPending: boolean;
+  invoices: Awaited<ReturnType<typeof staffApi.invoices>>['content'];
+  invoicesError: unknown;
+  invoicesLoading: boolean;
+  invoiceError: unknown;
+  invoicePresenceByOrderId: Record<number, boolean>;
+  isBusy: boolean;
+  menuItems: MenuItem[];
+  menuItemsLoadFailed: boolean;
+  onAddOrderItem: (payload: { orderId: number; menuItemId: number; quantity: number; note?: string }) => void;
+  onCancelOrder: (orderId: number) => void;
+  onClearOrderFocus: () => void;
+  onConfirmOrder: (orderId: number) => void;
+  onCreateInvoice: (order: Awaited<ReturnType<typeof staffApi.orders>>['content'][number]) => void;
+  onCreateStaffOrder: (payload: { note?: string; tableSessionId: number }) => void;
+  onRecordPayment: (payload: { invoiceId: number; amount: number; method: PaymentMethod; note?: string }) => void;
+  onReleaseSessionFocus: () => void;
+  onUpdateOrderItem: (payload: { orderId: number; orderItemId: number; quantity?: number; note?: string; cancelled?: boolean }) => void;
+  onUpdateOrderSearch: (value: string) => void;
+  orderSearch: string;
+  orderSessionFilter: number | null;
+  orders: Awaited<ReturnType<typeof staffApi.orders>>['content'];
+  ordersError: unknown;
+  ordersLoading: boolean;
+  payments: Awaited<ReturnType<typeof staffApi.payments>>['content'];
+  paymentsError: unknown;
+  paymentsLoading: boolean;
+  paymentError: unknown;
+  sessionLabelById: Record<number, string>;
+  showBillingLane: boolean;
+  showFloorLane: boolean;
+  staffMenuError: unknown;
+  staffMenuLoading: boolean;
+  subtitle: string;
+  title: string;
+  visibleOrderCount: number;
+  workbenchOrderError: unknown;
+}) {
+  return (
+    <DataPanel testId="operations-workbench" title={title} subtitle={subtitle}>
+      {showFloorLane ? (
+        <div className="mb-5 grid gap-3 md:grid-cols-[1fr_auto] md:items-end">
+          <label className="block">
+            <span className="mb-2 block text-xs font-bold uppercase tracking-[0.24em] text-slate">
+              {i18n.t('Search orders')}
+            </span>
+            <input
+              className="field"
+              onChange={(event) => onUpdateOrderSearch(event.target.value)}
+              placeholder={i18n.t('Order code or note')}
+              value={orderSearch}
+            />
+          </label>
+
+          <button
+            className="button-chip"
+            disabled={orderSearch.trim() === '' && orderSessionFilter === null}
+            onClick={onClearOrderFocus}
+            type="button"
+          >
+            {i18n.t('Clear order focus')}
+          </button>
+        </div>
+      ) : null}
+
+      {activeSession ? (
+        <div className="mb-5 rounded-[24px] border border-forest/15 bg-forest/5 px-4 py-4">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.24em] text-forest">
+                {i18n.t('Focused session')}
+              </p>
+              <p className="mt-2 text-sm leading-7 text-slate">
+                {activeSession.tableCode} • {activeSession.tableName} • {i18n.t('Opened')} {formatDateTime(activeSession.openedAt)}
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {visibleOrderCount === 0 ? (
+                <button
+                  className="button-chip-primary"
+                  disabled={createStaffOrderPending}
+                  onClick={() =>
+                    onCreateStaffOrder({
+                      note: `${i18n.t('Staff order started from')} ${activeSession.tableCode}`,
+                      tableSessionId: activeSession.id,
+                    })
+                  }
+                  type="button"
+                >
+                  {createStaffOrderPending ? i18n.t('Starting...') : i18n.t('Create dine-in order')}
+                </button>
+              ) : null}
+              <button className="button-chip" onClick={onReleaseSessionFocus} type="button">
+                {i18n.t('Release focus')}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {showFloorLane && ordersLoading ? <LoadingState label={i18n.t('Loading orders')} /> : null}
+      {showFloorLane && ordersError ? <ErrorState error={ordersError} /> : null}
+      {showFloorLane && staffMenuLoading ? <LoadingState label={i18n.t('Loading menu items for POS')} /> : null}
+      {showFloorLane && staffMenuError ? <ErrorState error={staffMenuError} /> : null}
+      {showBillingLane && invoicesLoading ? <LoadingState label={i18n.t('Loading invoices')} /> : null}
+      {showBillingLane && invoicesError ? <ErrorState error={invoicesError} /> : null}
+      {showBillingLane && paymentsLoading ? <LoadingState label={i18n.t('Loading payments')} /> : null}
+      {showBillingLane && paymentsError ? <ErrorState error={paymentsError} /> : null}
+      {createStaffOrderError ? (
+        <div className="mb-4">
+          <InlineError error={createStaffOrderError} />
+        </div>
+      ) : null}
+      {canRenderWorkbench ? (
+        <CashierWorkbench
+          orders={orders}
+          invoices={invoices}
+          payments={payments}
+          menuItems={menuItems}
+          menuItemsLoadFailed={menuItemsLoadFailed}
+          sessionLabelById={sessionLabelById}
+          isBusy={isBusy}
+          orderError={workbenchOrderError}
+          invoiceError={invoiceError}
+          paymentError={paymentError}
+          showOrderOperations={showFloorLane}
+          showBillingOperations={showBillingLane}
+          invoicePresenceByOrderId={invoicePresenceByOrderId}
+          onAddOrderItem={onAddOrderItem}
+          onCancelOrder={onCancelOrder}
+          onConfirmOrder={onConfirmOrder}
+          onCreateInvoice={onCreateInvoice}
+          onRecordPayment={onRecordPayment}
+          onUpdateOrderItem={onUpdateOrderItem}
+        />
+      ) : null}
+    </DataPanel>
+  );
+}
+
+function StaffOpenTableSessionsPanel({
+  isLoading,
+  sessions,
+  sessionsError,
+}: {
+  isLoading: boolean;
+  sessions: TableSession[];
+  sessionsError: unknown;
+}) {
+  return (
+    <DataPanel
+      testId="open-table-sessions-panel"
+      title={i18n.t('Open table sessions')}
+      subtitle={i18n.t('See which tables already have a live session before seating or check-in.')}
+    >
+      {isLoading ? <LoadingState label={i18n.t('Loading table sessions')} /> : null}
+      {sessionsError ? <ErrorState error={sessionsError} /> : null}
+      {!isLoading && !sessionsError ? <TableSessionList sessions={sessions} /> : null}
+    </DataPanel>
+  );
+}
+
 function ProtectedRoute({
   children,
   session,
@@ -1566,8 +1863,10 @@ function ProtectedRoute({
   session: AuthSession | null;
   isSessionReady: boolean;
 }) {
+  const { t } = useTranslation();
+
   if (!isSessionReady) {
-    return <LoadingState label="Restoring staff session" />;
+    return <LoadingState label={t('Restoring staff session')} />;
   }
 
   if (!session) {
@@ -2169,15 +2468,6 @@ function getErrorMessage(error: unknown) {
 
   return i18n.t('Something went wrong.');
 }
-
-
-
-
-
-
-
-
-
 
 
 

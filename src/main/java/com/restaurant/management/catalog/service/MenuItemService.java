@@ -13,7 +13,6 @@ import com.restaurant.management.common.storage.StoredObject;
 import com.restaurant.management.common.web.PageResponse;
 import com.restaurant.management.catalog.repository.MenuItemImageRepository;
 import com.restaurant.management.catalog.repository.MenuItemRepository;
-import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -67,10 +66,7 @@ public class MenuItemService {
 
     @Transactional(readOnly = true)
     public List<MenuItemResponse> listActive() {
-        List<MenuItem> items = menuItemRepository.findAll().stream()
-                .filter(menuItem -> menuItem.isActive() && menuItem.isAvailable() && menuItem.getCategory().isActive())
-                .sorted(Comparator.comparing((MenuItem item) -> item.getCategory().getSortOrder()).thenComparing(MenuItem::getName))
-                .toList();
+        List<MenuItem> items = menuItemRepository.findAllByActiveTrueAndAvailableTrueAndCategoryActiveTrueOrderByCategorySortOrderAscNameAsc();
         Map<Long, List<MenuItemImageResponse>> imagesByMenuItemId = loadImagesByMenuItemIds(
                 items.stream().map(MenuItem::getId).toList()
         );

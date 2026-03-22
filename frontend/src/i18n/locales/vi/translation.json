@@ -118,6 +118,8 @@
   "Loading payments": "Đang tải thanh toán",
   "Loading service requests": "Đang tải yêu cầu phục vụ",
   "Loading table sessions": "Đang tải ca bàn",
+  "Loading reservations": "Đang tải đặt chỗ",
+  "Loading table options": "Đang tải tùy chọn bàn",
   "Log out": "Đăng xuất",
   "Login with the seeded admin account and inspect orders, reservations, service requests, invoices, and payments.": "Đăng nhập bằng tài khoản admin được tạo sẵn và kiểm tra đơn, đặt chỗ, yêu cầu phục vụ, hóa đơn và thanh toán.",
   "Looking up reservation": "Đang tra cứu đặt chỗ",
@@ -131,6 +133,8 @@
   "Next 3h": "Trong 3 giờ tới",
   "Next move": "Lần hành động tiếp theo",
   "No active menu items are available to add right now.": "Không có món đang mở để thêm ngay lúc này.",
+  "No dishes match this search yet.": "Chưa có món nào khớp với bộ lọc này.",
+  "Menu items could not be loaded right now. Existing order and billing actions remain available.": "Chưa thể tải danh sách món lúc này. Các thao tác đơn và thanh toán hiện có vẫn dùng được.",
   "No active reservation": "Chưa có đặt chỗ",
   "No further action": "Không còn thao tác",
   "No invoices recorded yet.": "Chưa có hóa đơn nào được ghi nhận.",
@@ -139,6 +143,8 @@
   "No open invoices available": "Không có hóa đơn đang mở",
   "No open session": "Chưa mở ca",
   "No open table sessions yet.": "Chưa có ca bàn đang mở",
+  "Open table sessions": "Ca bàn đang mở",
+  "See which tables already have a live session before seating or check-in.": "Xem những bàn đã có ca hoạt động trước khi xếp chỗ hoặc check-in.",
   "No reservations yet.": "Chưa có đặt chỗ nào.",
   "No payments recorded yet.": "Chưa có thanh toán nào được ghi nhận",
   "No preference": "Không có sở thích",
@@ -163,6 +169,7 @@
   "Opened": "Đã mở",
   "Opening...": "Đang mở...",
   "Operations workbench": "Khu vực điều phối",
+  "POS, QR dining, and booking in one orbit": "POS, gọi món QR và đặt chỗ trong cùng một quỹ đạo",
   "Optional receipt or cashier note": "Tùy chọn biên lai hoặc ghi chú thu ngân",
   "Order #": "Đơn #",
   "Order code or note": "Mã đơn hoặc ghi chú",
@@ -207,6 +214,7 @@
   "Reservation queue": "Hàng đợi đặt chỗ",
   "Reservations": "Đặt chỗ",
   "Reserve a table without calling the host stand.": "Đặt bàn mà không cần gọi quầy lễ tân.",
+  "Restoring staff session": "Đang khôi phục phiên nhân viên",
   "Resolve": "Xử lý",
   "Resolve the QR token, open a table session on first interaction, stack dishes into the active QR order, then call for service or the bill.": "Giải mã token QR, mở ca bàn ở lần tương tác đầu tiên, xếp món vào đơn QR đang hoạt động, rồi gọi phục vụ hoặc yêu cầu hóa đơn.",
   "Resolve waiter calls and bill requests as soon as they land.": "Xử lý yêu cầu nhân viên phục vụ và yêu cầu hóa đơn ngay khi nhận được.",
@@ -336,4 +344,3 @@
   "STAFF": "Nhân viên",
   "QR": "QR"
 }
-

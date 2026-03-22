@@ -74,6 +74,7 @@ function renderWorkbench(overrides: Partial<ComponentProps<typeof CashierWorkben
       showBillingOperations
       invoicePresenceByOrderId={{ 1: true }}
       menuItems={[makeMenuItem()]}
+      menuItemsLoadFailed={false}
       sessionLabelById={{ 11: 'T-01 • Table 01' }}
       onAddOrderItem={vi.fn()}
       onConfirmOrder={onConfirmOrder}

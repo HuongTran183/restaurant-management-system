@@ -1,6 +1,7 @@
 import clsx from 'clsx';
 import { useEffect, useMemo, useState } from 'react';
 import type { FormEvent, ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { Invoice, MenuItem, Order, OrderItemStatus, Payment, PaymentMethod } from '../lib/api';
 import i18n from '../i18n/i18n';
 
@@ -11,6 +12,7 @@ type CashierWorkbenchProps = {
   invoices: Invoice[];
   payments: Payment[];
   menuItems: MenuItem[];
+  menuItemsLoadFailed: boolean;
   sessionLabelById: Record<number, string>;
   isBusy: boolean;
   orderError: unknown;
@@ -39,6 +41,7 @@ export function CashierWorkbench({
   invoices,
   payments,
   menuItems,
+  menuItemsLoadFailed,
   sessionLabelById,
   isBusy,
   orderError,
@@ -54,6 +57,7 @@ export function CashierWorkbench({
   onRecordPayment,
   onUpdateOrderItem,
 }: CashierWorkbenchProps) {
+  useTranslation();
   const [paymentForm, setPaymentForm] = useState<PaymentFormState>({
     invoiceId: '',
     amount: '',
@@ -399,7 +403,7 @@ export function CashierWorkbench({
 
                           {order.status === 'DRAFT' || order.status === 'CONFIRMED' ? (
                             menuItems.length ? (
-                              <form className="grid gap-3 rounded-[22px] border border-forest/15 bg-forest/5 p-4 md:grid-cols-[1.2fr_7rem_1fr_auto]" onSubmit={(event) => submitAddOrderItem(event, order.id)}>
+                              <form className="grid gap-3 rounded-[22px] border border-forest/15 bg-forest/5 p-4 lg:grid-cols-[minmax(0,1fr)_6.5rem_minmax(0,1fr)_auto] xl:gap-4" onSubmit={(event) => submitAddOrderItem(event, order.id)}>
                                 <label className="block">
                                   <span className="mb-2 block text-xs font-bold uppercase tracking-[0.18em] text-slate">{i18n.t('Menu item')}</span>
                                   <select
@@ -436,12 +440,16 @@ export function CashierWorkbench({
                                     placeholder={i18n.t('Course, allergy, rush...')}
                                   />
                                 </label>
-                                <div className="flex items-end">
+                                <div className="flex items-end lg:justify-end">
                                   <button className="button-chip-primary w-full justify-center" disabled={isBusy} type="submit">
                                     {isBusy ? i18n.t('Saving...') : i18n.t('Add item')}
                                   </button>
                                 </div>
                               </form>
+                            ) : menuItemsLoadFailed ? (
+                              <div className="rounded-[20px] border border-dashed border-ember/20 bg-ember/10 px-4 py-3 text-sm leading-7 text-slate">
+                                {i18n.t('Menu items could not be loaded right now. Existing order and billing actions remain available.')}
+                              </div>
                             ) : (
                               <div className="rounded-[20px] border border-dashed border-ink/15 bg-white/70 px-4 py-3 text-sm leading-7 text-slate">
                                 {i18n.t('No active menu items are available to add right now.')}
@@ -791,4 +799,3 @@ function getErrorMessage(error: unknown) {
 
   return i18n.t('Something went wrong.');
 }
-

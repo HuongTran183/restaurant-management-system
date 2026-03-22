@@ -229,31 +229,49 @@ class ApiError extends Error {
   }
 }
 
-async function request<T>(path: string, init: RequestInit = {}, token?: string): Promise<T> {
-  const headers = new Headers(init.headers);
-  if (!headers.has('Content-Type') && init.body) {
+async function request<T>(
+  path: string,
+  init: (RequestInit & { timeoutMs?: number }) = {},
+  token?: string,
+): Promise<T> {
+  const { timeoutMs = 15_000, ...fetchInit } = init;
+  const headers = new Headers(fetchInit.headers);
+  if (!headers.has('Content-Type') && fetchInit.body) {
     headers.set('Content-Type', 'application/json');
   }
   if (token) {
     headers.set('Authorization', `Bearer ${token}`);
   }
 
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    ...init,
-    headers,
-  });
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs);
 
-  if (!response.ok) {
-    const payload = await response.json().catch(() => null);
-    const detail = payload?.detail ?? payload?.title ?? 'Request failed';
-    throw new ApiError(detail, response.status);
+  try {
+    const response = await fetch(`${API_BASE_URL}${path}`, {
+      ...fetchInit,
+      headers,
+      signal: controller.signal,
+    });
+
+    if (!response.ok) {
+      const payload = await response.json().catch(() => null);
+      const detail = payload?.detail ?? payload?.title ?? 'Request failed';
+      throw new ApiError(detail, response.status);
+    }
+
+    if (response.status === 204) {
+      return undefined as T;
+    }
+
+    return (await response.json()) as T;
+  } catch (error) {
+    if (error instanceof DOMException && error.name === 'AbortError') {
+      throw new ApiError(`Request timed out after ${timeoutMs}ms`, 504);
+    }
+    throw error;
+  } finally {
+    window.clearTimeout(timeoutId);
   }
-
-  if (response.status === 204) {
-    return undefined as T;
-  }
-
-  return (await response.json()) as T;
 }
 
 export const publicApi = {
@@ -585,4 +603,3 @@ export const staffApi = {
 };
 
 export { ApiError };
-

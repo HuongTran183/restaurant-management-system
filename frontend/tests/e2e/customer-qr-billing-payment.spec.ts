@@ -65,7 +65,7 @@ test('qr order + request bill -> invoice and payment persist', async ({ page, re
 
   const ordText = await page.getByText(/ORD-/).first().innerText();
   // Một số trường hợp UI hiển thị dạng "ORD--XXXX"
-  const orderCode = ordText.match(/ORD-+[A-Z0-9]+/)?.[0];
+  const orderCode = ordText.match(/\bORD-[A-Z0-9-]+\b/)?.[0];
   expect(orderCode, `Cannot parse orderCode from: ${ordText}`).toBeTruthy();
 
   await page.getByRole('button', { name: /yêu cầu hóa đơn/i }).click();
