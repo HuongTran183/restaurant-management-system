@@ -415,9 +415,21 @@ function ReservationPage() {
                 <p className="text-xs font-bold uppercase tracking-[0.24em] text-forest">{lookupQuery.data.reservationCode}</p>
                 <h3 className="mt-2 font-display text-2xl text-ink">{lookupQuery.data.customerName}</h3>
               </div>
-              <StatusPill tone={lookupQuery.data.status === 'CANCELLED' ? 'warm' : lookupQuery.data.status === 'COMPLETED' ? 'neutral' : 'forest'}>
-                {i18n.t(lookupQuery.data.status)}
-              </StatusPill>
+              <div className="flex flex-col items-end gap-2 text-right">
+                <p className="text-xs font-bold uppercase tracking-[0.24em] text-slate">{i18n.t('Reservation status')}</p>
+                <StatusPill tone={lookupQuery.data.status === 'CANCELLED' ? 'warm' : lookupQuery.data.status === 'COMPLETED' ? 'neutral' : 'forest'}>
+                  {i18n.t(lookupQuery.data.status)}
+                </StatusPill>
+                <p
+                  aria-atomic="true"
+                  aria-live="polite"
+                  className="text-sm font-semibold text-slate"
+                  data-testid="public-reservation-status"
+                  role="status"
+                >
+                  {i18n.t('Reservation status: {{status}}', { status: i18n.t(lookupQuery.data.status) })}
+                </p>
+              </div>
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <InfoPair label={i18n.t('Arrival')} value={formatDateTime(lookupQuery.data.reservationTime)} />
@@ -2283,7 +2295,6 @@ function getErrorMessage(error: unknown) {
 
   return i18n.t('Something went wrong.');
 }
-
 
 
 

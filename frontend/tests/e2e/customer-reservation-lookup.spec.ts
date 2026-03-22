@@ -28,7 +28,7 @@ test('customer can create, lookup by code, and cancel reservation', async ({ pag
   await page.getByRole('button', { name: /tạo đặt chỗ/i }).click();
 
   await expect(page.getByText(/RES-/)).toBeVisible();
-  await expect(page.getByText(/Đang chờ/i)).toBeVisible();
+  await expect(page.getByTestId('public-reservation-status')).toHaveText(/Trạng thái đặt chỗ:\s*Đang chờ/i);
 
   const codeField = page.getByPlaceholder('RES-XXXX');
   await expect(codeField).toHaveValue(/RES-/);
@@ -42,11 +42,11 @@ test('customer can create, lookup by code, and cancel reservation', async ({ pag
   await codeField.fill(reservationCode);
   await page.getByRole('button', { name: /tìm/i }).click();
 
-  await expect(page.getByText(/Đang chờ/i)).toBeVisible();
+  await expect(page.getByTestId('public-reservation-status')).toHaveText(/Trạng thái đặt chỗ:\s*Đang chờ/i);
 
   // Cancel
   await page.getByLabel('Ghi chú hủy').fill(`Lookup cancel ${unique}`);
   await page.getByRole('button', { name: /hủy đặt chỗ/i }).click();
-  await expect(page.getByText(/Đã hủy/i)).toBeVisible();
+  await expect(page.getByTestId('public-reservation-status')).toHaveText(/Trạng thái đặt chỗ:\s*Đã hủy/i);
 });
 

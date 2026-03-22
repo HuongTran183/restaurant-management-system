@@ -27,10 +27,10 @@ test('customer can create and cancel a reservation', async ({ page }) => {
   await page.getByRole('button', { name: /tạo đặt chỗ/i }).click();
 
   await expect(page.getByText(/RES-/)).toBeVisible();
-  await expect(page.getByText(/Đang chờ/i)).toBeVisible();
+  await expect(page.getByTestId('public-reservation-status')).toHaveText(/Trạng thái đặt chỗ:\s*Đang chờ/i);
 
   await page.getByLabel('Ghi chú hủy').fill('Plan changed');
   await page.getByRole('button', { name: /hủy đặt chỗ/i }).click();
 
-  await expect(page.getByText(/Đã hủy/i)).toBeVisible();
+  await expect(page.getByTestId('public-reservation-status')).toHaveText(/Trạng thái đặt chỗ:\s*Đã hủy/i);
 });

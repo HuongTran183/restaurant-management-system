@@ -211,6 +211,8 @@
   "Request bill": "Yêu cầu hóa đơn",
   "Requested area": "Khu vực yêu cầu",
   "Reservation": "Đặt chỗ",
+  "Reservation status": "Trạng thái đặt chỗ",
+  "Reservation status: {{status}}": "Trạng thái đặt chỗ: {{status}}",
   "Reservation queue": "Hàng đợi đặt chỗ",
   "Reservations": "Đặt chỗ",
   "Reserve a table without calling the host stand.": "Đặt bàn mà không cần gọi quầy lễ tân.",

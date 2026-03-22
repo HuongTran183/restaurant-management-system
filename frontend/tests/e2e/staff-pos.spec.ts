@@ -1,61 +1,73 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
+import { ensureFocusedSessionHasOrder, loginToStaffDashboard, openAnyFloorAction } from './helpers';
+
+function boxesOverlap(left: { x: number; y: number; width: number; height: number }, right: { x: number; y: number; width: number; height: number }) {
+  return left.x < right.x + right.width
+    && left.x + left.width > right.x
+    && left.y < right.y + right.height
+    && left.y + left.height > right.y;
+}
+
+async function expectBoxWithinViewport(page: Page, locator: Locator) {
+  const viewport = page.viewportSize();
+  const box = await locator.boundingBox();
+
+  expect(viewport).not.toBeNull();
+  expect(box).not.toBeNull();
+
+  const safeViewport = viewport!;
+  const safeBox = box!;
+  expect(safeBox.x).toBeGreaterThanOrEqual(0);
+  expect(safeBox.y).toBeGreaterThanOrEqual(0);
+  expect(safeBox.x + safeBox.width).toBeLessThanOrEqual(safeViewport.width + 1);
+  expect(safeBox.y + safeBox.height).toBeLessThanOrEqual(safeViewport.height + 1_000);
+
+  return safeBox;
+}
 
 test('staff can enter the floor workspace and continue a table flow', async ({ page }) => {
-  // Force Vietnamese UI for deterministic selectors.
-  await page.addInitScript(() => {
-    window.localStorage.setItem('h-restaurant-management-system:lang', 'vi');
-  });
+  await loginToStaffDashboard(page);
+  await openAnyFloorAction(page);
+  await ensureFocusedSessionHasOrder(page);
+});
 
-  await page.goto('/staff/login');
+test('staff keeps reservation filters and add-item form separated on a narrow viewport', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
 
-  // i18n initializes on first load; reload after forcing language.
-  await page.evaluate(() => {
-    window.localStorage.setItem('h-restaurant-management-system:lang', 'vi');
-  });
-  await page.reload();
+  await loginToStaffDashboard(page);
+  await openAnyFloorAction(page);
+  const { workbench } = await ensureFocusedSessionHasOrder(page);
 
-  await page.getByLabel('Tên đăng nhập').fill('admin');
-  await page.getByLabel('Mật khẩu').fill('Admin@123456');
-  await page.getByRole('button', { name: /mở bảng điều khiển nhân viên/i }).click();
+  const reservationSearch = page.getByRole('textbox', { name: /tìm đặt chỗ/i });
+  const clearFiltersButton = page.getByRole('button', { name: /xóa bộ lọc/i });
+  const addItemField = workbench.getByLabel(/thêm món cho đơn/i).first();
+  const quantityField = workbench.getByLabel(/thêm số lượng cho đơn/i).first();
+  const noteField = workbench.getByLabel(/thêm ghi chú cho đơn/i).first();
+  const addItemButton = workbench.getByRole('button', { name: /^thêm món$/i }).first();
 
-  await expect(page.getByText(/Chào mừng bạn quay lại/i)).toBeVisible();
+  await expect(reservationSearch).toBeVisible();
+  await expect(clearFiltersButton).toBeVisible();
+  await expect(addItemField).toBeVisible();
+  await expect(quantityField).toBeVisible();
+  await expect(noteField).toBeVisible();
+  await expect(addItemButton).toBeVisible();
 
-  const seatWalkInButton = page.getByRole('button', { name: /cho khách vãng lai ngồi/i }).first();
-  const openOrderFlowButton = page.getByRole('button', { name: /mở luồng đơn/i }).first();
-  const openSessionButton = page.getByRole('button', { name: /mở ca/i }).first();
+  await reservationSearch.scrollIntoViewIfNeeded();
+  await clearFiltersButton.scrollIntoViewIfNeeded();
+  const reservationSearchBox = await expectBoxWithinViewport(page, reservationSearch);
+  const clearFiltersBox = await expectBoxWithinViewport(page, clearFiltersButton);
 
-  await expect
-    .poll(async () => {
-      return (await seatWalkInButton.count()) + (await openOrderFlowButton.count()) + (await openSessionButton.count());
-    }, { message: 'expected at least one floor action to become available' })
-    .toBeGreaterThan(0);
+  await addItemField.scrollIntoViewIfNeeded();
+  await quantityField.scrollIntoViewIfNeeded();
+  await noteField.scrollIntoViewIfNeeded();
+  await addItemButton.scrollIntoViewIfNeeded();
+  const addItemFieldBox = await expectBoxWithinViewport(page, addItemField);
+  const quantityFieldBox = await expectBoxWithinViewport(page, quantityField);
+  const noteFieldBox = await expectBoxWithinViewport(page, noteField);
+  const addItemButtonBox = await expectBoxWithinViewport(page, addItemButton);
 
-  if (await seatWalkInButton.isVisible().catch(() => false)) {
-    await seatWalkInButton.click();
-  } else if (await openOrderFlowButton.isVisible().catch(() => false)) {
-    await openOrderFlowButton.click();
-  } else {
-    await openSessionButton.click();
-  }
-
-  const workbench = page.getByTestId('operations-workbench');
-  await expect(workbench).toBeVisible();
-  await expect(workbench.getByText(/Ca bàn đang tập trung/i)).toBeVisible();
-
-  const orderCode = workbench.getByText(/ORD-/).first();
-  const createOrderButton = workbench.getByRole('button', { name: /tạo đơn ăn tại chỗ/i }).first();
-
-  await expect
-    .poll(async () => {
-      if (await orderCode.isVisible().catch(() => false)) {
-        return 'order-ready';
-      }
-
-      if (await createOrderButton.isVisible().catch(() => false)) {
-        return 'create-available';
-      }
-
-      return 'waiting';
-    }, { message: 'expected the focused session to expose an existing order or a create-order action' })
-    .not.toBe('waiting');
+  expect(boxesOverlap(reservationSearchBox, clearFiltersBox)).toBeFalsy();
+  expect(boxesOverlap(addItemFieldBox, addItemButtonBox)).toBeFalsy();
+  expect(boxesOverlap(quantityFieldBox, addItemButtonBox)).toBeFalsy();
+  expect(boxesOverlap(noteFieldBox, addItemButtonBox)).toBeFalsy();
 });

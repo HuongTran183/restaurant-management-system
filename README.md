@@ -188,6 +188,10 @@ npm test
 npm run test:e2e
 ```
 
+Kế hoạch smoke / thủ công / thứ tự E2E chi tiết: [docs/MANUAL_AND_E2E_TEST_PLAN.md](docs/MANUAL_AND_E2E_TEST_PLAN.md).
+
+`npm run test:e2e` chạy các journey theo thứ tự cố định (customer → staff → gate persistence) nhờ `projects` + `dependencies` trong `frontend/playwright.config.ts`.
+
 Playwright defaults:
 - `npm run test:e2e` assumes the dedicated repo ports by default
 - Default frontend URL: `http://127.0.0.1:15173`
@@ -201,9 +205,9 @@ Run mode summary:
 - Using the same external ports in both modes keeps frontend, backend, QR URLs, and Playwright aligned
 - If another service owns one of these ports, override all related envs together instead of mixing defaults silently
 
-Current frontend result:
-- `5` Vitest assertions passed
-- `3` Playwright journeys passed
+Current frontend result (cập nhật sau mỗi lần chạy `npm test` / `npm run test:e2e`):
+- Vitest: chạy `npm test` để xem số test hiện tại (gần đây: 10 tests / 2 files)
+- Playwright: `npm run test:e2e` — 6 journeys, thứ tự trong `playwright.config.ts` và [docs/MANUAL_AND_E2E_TEST_PLAN.md](docs/MANUAL_AND_E2E_TEST_PLAN.md)
 
 ## Repo Structure
 
