@@ -21,9 +21,9 @@ import {
   type ServiceRequest,
   type ServiceRequestStatus,
 } from './lib/api';
-import { CashierWorkbench } from './components/CashierWorkbench';
 import { FloorOverview, type FloorOverviewActionState } from './components/FloorOverview';
 import { LanguageSwitcher } from './components/LanguageSwitcher';
+import { StaffOperationsWorkbenchPanel } from './components/StaffOperationsWorkbenchPanel';
 import { clearSession, msUntilSessionRefresh, readSession, saveSession, shouldRefreshSession } from './lib/session';
 import i18n from './i18n/i18n';
 
@@ -1647,191 +1647,6 @@ function StaffServiceRequestsPanel({
   );
 }
 
-function StaffOperationsWorkbenchPanel({
-  activeSession,
-  canRenderWorkbench,
-  createStaffOrderError,
-  createStaffOrderPending,
-  invoices,
-  invoicesError,
-  invoicesLoading,
-  invoiceError,
-  invoicePresenceByOrderId,
-  isBusy,
-  menuItems,
-  menuItemsLoadFailed,
-  onAddOrderItem,
-  onCancelOrder,
-  onClearOrderFocus,
-  onConfirmOrder,
-  onCreateInvoice,
-  onCreateStaffOrder,
-  onRecordPayment,
-  onReleaseSessionFocus,
-  onUpdateOrderItem,
-  onUpdateOrderSearch,
-  orderSearch,
-  orderSessionFilter,
-  orders,
-  ordersError,
-  ordersLoading,
-  payments,
-  paymentsError,
-  paymentsLoading,
-  paymentError,
-  sessionLabelById,
-  showBillingLane,
-  showFloorLane,
-  staffMenuError,
-  staffMenuLoading,
-  subtitle,
-  title,
-  visibleOrderCount,
-  workbenchOrderError,
-}: {
-  activeSession: TableSession | null;
-  canRenderWorkbench: boolean;
-  createStaffOrderError: unknown;
-  createStaffOrderPending: boolean;
-  invoices: Awaited<ReturnType<typeof staffApi.invoices>>['content'];
-  invoicesError: unknown;
-  invoicesLoading: boolean;
-  invoiceError: unknown;
-  invoicePresenceByOrderId: Record<number, boolean>;
-  isBusy: boolean;
-  menuItems: MenuItem[];
-  menuItemsLoadFailed: boolean;
-  onAddOrderItem: (payload: { orderId: number; menuItemId: number; quantity: number; note?: string }) => void;
-  onCancelOrder: (orderId: number) => void;
-  onClearOrderFocus: () => void;
-  onConfirmOrder: (orderId: number) => void;
-  onCreateInvoice: (order: Awaited<ReturnType<typeof staffApi.orders>>['content'][number]) => void;
-  onCreateStaffOrder: (payload: { note?: string; tableSessionId: number }) => void;
-  onRecordPayment: (payload: { invoiceId: number; amount: number; method: PaymentMethod; note?: string }) => void;
-  onReleaseSessionFocus: () => void;
-  onUpdateOrderItem: (payload: { orderId: number; orderItemId: number; quantity?: number; note?: string; cancelled?: boolean }) => void;
-  onUpdateOrderSearch: (value: string) => void;
-  orderSearch: string;
-  orderSessionFilter: number | null;
-  orders: Awaited<ReturnType<typeof staffApi.orders>>['content'];
-  ordersError: unknown;
-  ordersLoading: boolean;
-  payments: Awaited<ReturnType<typeof staffApi.payments>>['content'];
-  paymentsError: unknown;
-  paymentsLoading: boolean;
-  paymentError: unknown;
-  sessionLabelById: Record<number, string>;
-  showBillingLane: boolean;
-  showFloorLane: boolean;
-  staffMenuError: unknown;
-  staffMenuLoading: boolean;
-  subtitle: string;
-  title: string;
-  visibleOrderCount: number;
-  workbenchOrderError: unknown;
-}) {
-  return (
-    <DataPanel testId="operations-workbench" title={title} subtitle={subtitle}>
-      {showFloorLane ? (
-        <div className="mb-5 grid gap-3 md:grid-cols-[1fr_auto] md:items-end">
-          <label className="block">
-            <span className="mb-2 block text-xs font-bold uppercase tracking-[0.24em] text-slate">
-              {i18n.t('Search orders')}
-            </span>
-            <input
-              className="field"
-              onChange={(event) => onUpdateOrderSearch(event.target.value)}
-              placeholder={i18n.t('Order code or note')}
-              value={orderSearch}
-            />
-          </label>
-
-          <button
-            className="button-chip"
-            disabled={orderSearch.trim() === '' && orderSessionFilter === null}
-            onClick={onClearOrderFocus}
-            type="button"
-          >
-            {i18n.t('Clear order focus')}
-          </button>
-        </div>
-      ) : null}
-
-      {activeSession ? (
-        <div className="mb-5 rounded-[24px] border border-forest/15 bg-forest/5 px-4 py-4">
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-            <div>
-              <p className="text-xs font-bold uppercase tracking-[0.24em] text-forest">
-                {i18n.t('Focused session')}
-              </p>
-              <p className="mt-2 text-sm leading-7 text-slate">
-                {activeSession.tableCode} • {activeSession.tableName} • {i18n.t('Opened')} {formatDateTime(activeSession.openedAt)}
-              </p>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {visibleOrderCount === 0 ? (
-                <button
-                  className="button-chip-primary"
-                  disabled={createStaffOrderPending}
-                  onClick={() =>
-                    onCreateStaffOrder({
-                      note: `${i18n.t('Staff order started from')} ${activeSession.tableCode}`,
-                      tableSessionId: activeSession.id,
-                    })
-                  }
-                  type="button"
-                >
-                  {createStaffOrderPending ? i18n.t('Starting...') : i18n.t('Create dine-in order')}
-                </button>
-              ) : null}
-              <button className="button-chip" onClick={onReleaseSessionFocus} type="button">
-                {i18n.t('Release focus')}
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
-
-      {showFloorLane && ordersLoading ? <LoadingState label={i18n.t('Loading orders')} /> : null}
-      {showFloorLane && ordersError ? <ErrorState error={ordersError} /> : null}
-      {showFloorLane && staffMenuLoading ? <LoadingState label={i18n.t('Loading menu items for POS')} /> : null}
-      {showFloorLane && staffMenuError ? <ErrorState error={staffMenuError} /> : null}
-      {showBillingLane && invoicesLoading ? <LoadingState label={i18n.t('Loading invoices')} /> : null}
-      {showBillingLane && invoicesError ? <ErrorState error={invoicesError} /> : null}
-      {showBillingLane && paymentsLoading ? <LoadingState label={i18n.t('Loading payments')} /> : null}
-      {showBillingLane && paymentsError ? <ErrorState error={paymentsError} /> : null}
-      {createStaffOrderError ? (
-        <div className="mb-4">
-          <InlineError error={createStaffOrderError} />
-        </div>
-      ) : null}
-      {canRenderWorkbench ? (
-        <CashierWorkbench
-          orders={orders}
-          invoices={invoices}
-          payments={payments}
-          menuItems={menuItems}
-          menuItemsLoadFailed={menuItemsLoadFailed}
-          sessionLabelById={sessionLabelById}
-          isBusy={isBusy}
-          orderError={workbenchOrderError}
-          invoiceError={invoiceError}
-          paymentError={paymentError}
-          showOrderOperations={showFloorLane}
-          showBillingOperations={showBillingLane}
-          invoicePresenceByOrderId={invoicePresenceByOrderId}
-          onAddOrderItem={onAddOrderItem}
-          onCancelOrder={onCancelOrder}
-          onConfirmOrder={onConfirmOrder}
-          onCreateInvoice={onCreateInvoice}
-          onRecordPayment={onRecordPayment}
-          onUpdateOrderItem={onUpdateOrderItem}
-        />
-      ) : null}
-    </DataPanel>
-  );
-}
-
 function StaffOpenTableSessionsPanel({
   isLoading,
   sessions,
@@ -2468,9 +2283,6 @@ function getErrorMessage(error: unknown) {
 
   return i18n.t('Something went wrong.');
 }
-
-
-
 
 
 

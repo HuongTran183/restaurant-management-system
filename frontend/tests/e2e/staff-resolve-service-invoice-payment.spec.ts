@@ -3,7 +3,7 @@ import { getDemoQrToken } from './helpers';
 
 function extractFirstOrderCode(text: string): string | null {
   // Một số trạng thái UI hiển thị dạng "ORD--XXXX" (double hyphen)
-  const match = text.match(/ORD-+[A-Z0-9]+/);
+  const match = text.match(/\bORD-[A-Z0-9-]+\b/);
   return match?.[0] ?? null;
 }
 
@@ -48,7 +48,7 @@ test('staff resolves service request -> invoice -> payment (UI only)', async ({ 
 
   // 3) Chờ staff nhìn thấy order và tiến hành resolve
   //    (đảm bảo chúng ta đang xử lý đúng order vừa tạo từ luồng QR)
-  await expect(page.getByText(orderCode!, { exact: false })).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByText(orderCode!, { exact: true }).first()).toBeVisible({ timeout: 30_000 });
 
   const resolveButton = page.getByRole('button', { name: /xử lý/i }).first();
   await expect(resolveButton).toBeVisible();
