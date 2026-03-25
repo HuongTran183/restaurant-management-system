@@ -26,16 +26,26 @@ Dùng **compose mode** với bộ port đã chuẩn hóa để test thủ công 
 
    - Frontend: `http://127.0.0.1:15173`
    - Backend health: `http://127.0.0.1:18080/actuator/health`
+   - Backend diagnostics: `http://127.0.0.1:18080/actuator/metrics`, `http://127.0.0.1:18080/actuator/httpexchanges`
 
-3. Smoke thủ công qua UI: app render, i18n đổi được, staff đăng nhập được.
+3. Nếu cần dựng state ổn định trước khi test staff/E2E, seed backend bằng `/api/dev/**` với admin JWT:
 
-4. Flow khách hàng (thủ công): reservation → reservation lookup → QR order → request bill.
+   - `POST /api/dev/reset`
+   - `POST /api/dev/scenarios/baseline`
+   - `POST /api/dev/scenarios/draft-order`
+   - `POST /api/dev/scenarios/pending-bill`
+   - `POST /api/dev/scenarios/open-invoice`
+   - `POST /api/dev/scenarios/payment-history`
 
-5. Flow staff (thủ công): login → open floor workspace → resolve request → confirm order → create invoice → record payment.
+4. Smoke thủ công qua UI: app render, i18n đổi được, staff đăng nhập được.
 
-6. Regression gần đây: đổi ngôn ngữ không reload; workbench không bị chặn toàn bộ khi menu lỗi; thông báo lỗi thay vì treo.
+5. Flow khách hàng (thủ công): reservation → reservation lookup → QR order → request bill.
 
-7. Kiểm tra nhanh tự động (từ thư mục `frontend`):
+6. Flow staff (thủ công): login → open floor workspace → resolve request → confirm order → create invoice → record payment.
+
+7. Regression gần đây: đổi ngôn ngữ không reload; workbench không bị chặn toàn bộ khi menu lỗi; thông báo lỗi thay vì treo.
+
+8. Kiểm tra nhanh tự động (từ thư mục `frontend`):
 
    ```powershell
    cd frontend
@@ -46,7 +56,14 @@ Dùng **compose mode** với bộ port đã chuẩn hóa để test thủ công 
 
    Thứ tự các journey được **cố định trong** `frontend/playwright.config.ts` (projects + `dependencies`), không phụ thuộc thứ tự file trên CLI.
 
-8. Khi có lỗi: lưu mã `RES-*`, `ORD-*`, `PAY-*`, ảnh màn hình, URL hiện tại, request lỗi trong tab Network.
+9. Khi có lỗi: lưu mã `RES-*`, `ORD-*`, `PAY-*`, ảnh màn hình, URL hiện tại, request lỗi trong tab Network.
+
+10. Nếu `/api/public/menu` chậm hoặc nghi treo:
+
+   - xem log backend với correlation id trả về từ `X-Correlation-Id`
+   - đọc `Public menu timings: correlationId=... categoriesMs=... menuItemsMs=... totalMs=...`
+   - xem metric `app.public.api.requests` và `app.public.menu.steps` trong `/actuator/metrics`
+   - nếu request bị slow/fail, xem thêm snapshot pool trong log diagnostics
 
 ## Test UI thủ công
 
@@ -101,8 +118,11 @@ Lý do: ba flow đầu xác nhận public/customer; `staff-pos` smoke lane staff
 2. `customer-reservation-lookup.spec.ts`
 3. `customer-qr.spec.ts`
 4. `staff-pos.spec.ts`
-5. `staff-resolve-service-invoice-payment.spec.ts`
-6. `customer-qr-billing-payment.spec.ts`
+5. `staff-menu-outage.spec.ts`
+6. `staff-layout-visual.spec.ts`
+7. `staff-cashier-scenarios.spec.ts`
+8. `staff-resolve-service-invoice-payment.spec.ts`
+9. `customer-qr-billing-payment.spec.ts`
 
 Chạy:
 
@@ -112,3 +132,7 @@ npm run test:e2e
 ```
 
 Cấu hình URL mặc định: `frontend/tests/e2e/runtime.ts` (đọc `APP_FRONTEND_PORT` / `APP_BACKEND_PORT` từ env frontend, mặc định `15173` / `18080`).
+
+Ghi chú quan trọng:
+- Helper Playwright hiện seed/reset qua `/api/dev/**`, không còn suy đoán state bằng UI.
+- Visual regression dùng snapshot cho `reservation-queue-header`, `cashier-add-item-form`, và `staff-dashboard-grid`.

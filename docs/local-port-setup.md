@@ -125,6 +125,20 @@ With the new port setup:
 - CORS allowed origins follow the configured frontend ports.
 - Compose host bindings for MySQL, backend, and frontend are overrideable by env.
 
+## Diagnostics and test scenarios on the dedicated ports
+
+With the standardized local ports, the repo also assumes these local-only diagnostics/dev-support URLs by default:
+
+- Health: `http://127.0.0.1:18080/actuator/health`
+- Metrics: `http://127.0.0.1:18080/actuator/metrics`
+- HTTP exchanges: `http://127.0.0.1:18080/actuator/httpexchanges`
+- Dev reset: `POST http://127.0.0.1:18080/api/dev/reset`
+- Dev scenarios: `POST http://127.0.0.1:18080/api/dev/scenarios/{baseline|draft-order|pending-bill|open-invoice|payment-history}`
+
+These endpoints exist only in `local` and `test`, and the `/api/dev/**` endpoints require an admin JWT.
+
+Because host mode and compose mode now expose the same frontend/backend ports, Playwright and manual test steps can reuse the same URLs, healthchecks, and dev-support contracts in both modes.
+
 ## Verification checklist
 
 Host mode:

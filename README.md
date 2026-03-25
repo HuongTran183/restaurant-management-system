@@ -7,10 +7,12 @@ Backend monolith for restaurant/POS operations, plus a React frontend shell for 
 Implemented now:
 - Spring Boot backend with Flyway migrations, JWT auth, RBAC, menu/category management, QR table flow, ordering, billing, service requests, and reservations
 - Public APIs for menu, QR resolve, QR ordering, service requests, and reservations
+- Local/test diagnostics for public APIs, including actuator `health`, `metrics`, `httpexchanges`, correlation IDs, and slow-request logging for `/api/public/**`
+- Dev-support API for deterministic local/test reset + scenario seeding (`/api/dev/reset`, `/api/dev/scenarios/*`)
 - React + Vite frontend shell in `frontend/` for public and staff MVP flows
 - Staff workspace actions for reservations, service requests, table/session visibility, floor actions, and cashier loops (`order -> invoice -> payment`)
 - Backend integration coverage for auth, public QR ordering, reservation lifecycle, and floor workspace filters
-- Frontend automated coverage with Vitest component tests and Playwright journeys for the main MVP flows
+- Frontend automated coverage with Vitest component tests, Playwright journeys, and staff layout visual regression for the main MVP flows
 
 Current limits:
 - The admin account is auto-seeded on a fresh database
@@ -152,6 +154,55 @@ Public QR landing URLs use the React route:
 If you want a blank local database, set `APP_BOOTSTRAP_DEMO=false` before starting the backend.
 If you are using `compose.full.yaml`, demo seeding is enabled by default through `APP_BOOTSTRAP_DEMO=true`.
 
+## Diagnostics and Dev Support
+
+Local and test profiles now expose a small diagnostics/dev-support surface to make backend issues easier to prove and E2E data more deterministic.
+
+Enabled by default in `local` and `test`:
+- `app.diagnostics.enabled=true`
+- `app.diagnostics.slow-request-threshold-ms=1500`
+- `app.dev-support.enabled=true`
+
+Useful local endpoints:
+- [http://127.0.0.1:18080/actuator/health](http://127.0.0.1:18080/actuator/health)
+- [http://127.0.0.1:18080/actuator/metrics](http://127.0.0.1:18080/actuator/metrics)
+- [http://127.0.0.1:18080/actuator/httpexchanges](http://127.0.0.1:18080/actuator/httpexchanges)
+
+When diagnostics are enabled:
+- public endpoints under `/api/public/**` emit a correlation id
+- the backend logs menu timing split for categories/items/total in `PublicMenuController`
+- slow or failing public requests log a pool snapshot when Hikari is available
+- actuator metrics include:
+  - `app.public.api.requests`
+  - `app.public.api.slow_requests`
+  - `app.public.api.failures`
+  - `app.public.menu.steps`
+
+Dev-support endpoints are available only in `local` and `test`, and require an authenticated admin JWT:
+- `POST /api/dev/reset`
+- `POST /api/dev/scenarios/baseline`
+- `POST /api/dev/scenarios/draft-order`
+- `POST /api/dev/scenarios/pending-bill`
+- `POST /api/dev/scenarios/open-invoice`
+- `POST /api/dev/scenarios/payment-history`
+
+Scenario intent:
+- `baseline`: demo admin + hall/table/menu/QR available, transaction data reset
+- `draft-order`: baseline + open table session + draft staff dine-in order for `T-01`
+- `pending-bill`: baseline + QR order + bill request ready for staff resolve/invoice/payment
+- `open-invoice`: baseline + confirmed dine-in order + one open invoice ready for cashier actions
+- `payment-history`: baseline + paid invoice + completed payment history entry ready for reporting/history checks
+
+Example PowerShell flow:
+
+```powershell
+$login = Invoke-RestMethod -Method Post -Uri http://127.0.0.1:18080/api/auth/login -ContentType 'application/json' -Body '{"username":"admin","password":"Admin@123456"}'
+$headers = @{ Authorization = "Bearer $($login.accessToken)" }
+
+Invoke-RestMethod -Method Post -Uri http://127.0.0.1:18080/api/dev/reset -Headers $headers
+Invoke-RestMethod -Method Post -Uri http://127.0.0.1:18080/api/dev/scenarios/pending-bill -Headers $headers
+```
+
 ## Testing
 
 ### Backend unit + integration tests
@@ -161,7 +212,7 @@ If you are using `compose.full.yaml`, demo seeding is enabled by default through
 ```
 
 Current expected result:
-- `22` tests
+- `29` tests
 - `0` failures
 - `0` skipped when Docker is available
 
@@ -207,7 +258,7 @@ Run mode summary:
 
 Current frontend result (cập nhật sau mỗi lần chạy `npm test` / `npm run test:e2e`):
 - Vitest: chạy `npm test` để xem số test hiện tại (gần đây: 10 tests / 2 files)
-- Playwright: `npm run test:e2e` — 6 journeys, thứ tự trong `playwright.config.ts` và [docs/MANUAL_AND_E2E_TEST_PLAN.md](docs/MANUAL_AND_E2E_TEST_PLAN.md)
+- Playwright: `npm run test:e2e` — customer flows, staff smoke, menu outage regression, layout visual regression, cashier scenario contract checks, staff resolve/payment, và QR billing persistence gate
 
 ## Repo Structure
 

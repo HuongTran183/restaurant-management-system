@@ -40,6 +40,11 @@ public class IdentityBootstrapService implements ApplicationRunner {
     @Override
     @Transactional
     public void run(ApplicationArguments args) {
+        ensureBootstrapIdentity();
+    }
+
+    @Transactional
+    public void ensureBootstrapIdentity() {
         ensureRoles();
         ensureAdmin();
     }

@@ -6,23 +6,29 @@ type AuthPayload = {
   accessToken: string;
 };
 
-type PageResponse<T> = {
-  content: T[];
+type DevScenarioResponse = {
+  scenario: string;
+  tableId: number;
+  tableCode: string;
+  qrToken: string;
+  qrLandingUrl: string;
+  tableSessionId: number | null;
+  tableSessionCode: string | null;
+  orderId: number | null;
+  orderCode: string | null;
+  serviceRequestId: number | null;
+  serviceRequestType: string | null;
+  invoiceId: number | null;
+  invoiceNumber: string | null;
+  invoiceStatus: string | null;
+  paymentId: number | null;
+  paymentCode: string | null;
+  paymentStatus: string | null;
 };
 
-type DiningTable = {
-  id: number;
-  code: string;
-  name: string;
-};
-
-type TableQr = {
-  landingUrl: string;
-  token: string;
-};
-
-type TableSession = {
-  id: number;
+type DevResetResponse = {
+  status: string;
+  message: string;
 };
 
 async function parseJson<T>(response: Awaited<ReturnType<APIRequestContext['get']>>): Promise<T> {
@@ -44,75 +50,49 @@ export async function loginAsAdmin(request: APIRequestContext): Promise<string> 
   return payload.accessToken;
 }
 
-export async function findDemoTable(request: APIRequestContext, accessToken: string): Promise<DiningTable> {
-  const response = await request.get(`${API_BASE_URL}/api/tables?size=20&active=true&query=T-01`, {
+async function callDevScenario(
+  request: APIRequestContext,
+  scenario: 'baseline' | 'draft-order' | 'pending-bill' | 'open-invoice' | 'payment-history',
+): Promise<DevScenarioResponse> {
+  const accessToken = await loginAsAdmin(request);
+  return parseJson<DevScenarioResponse>(await request.post(`${API_BASE_URL}/api/dev/scenarios/${scenario}`, {
     headers: {
       Authorization: `Bearer ${accessToken}`,
     },
-  });
-  const payload = await parseJson<PageResponse<DiningTable>>(response);
-  const table = payload.content[0];
+  }));
+}
 
-  if (!table) {
-    throw new Error('Demo table T-01 was not found');
-  }
+export async function resetDevState(request: APIRequestContext): Promise<DevResetResponse> {
+  const accessToken = await loginAsAdmin(request);
+  return parseJson<DevResetResponse>(await request.post(`${API_BASE_URL}/api/dev/reset`, {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  }));
+}
 
-  return table;
+export async function seedBaselineScenario(request: APIRequestContext): Promise<DevScenarioResponse> {
+  return callDevScenario(request, 'baseline');
+}
+
+export async function seedPendingBillScenario(request: APIRequestContext): Promise<DevScenarioResponse> {
+  return callDevScenario(request, 'pending-bill');
+}
+
+export async function seedOpenInvoiceScenario(request: APIRequestContext): Promise<DevScenarioResponse> {
+  return callDevScenario(request, 'open-invoice');
+}
+
+export async function seedPaymentHistoryScenario(request: APIRequestContext): Promise<DevScenarioResponse> {
+  return callDevScenario(request, 'payment-history');
 }
 
 export async function getDemoQrToken(request: APIRequestContext): Promise<string> {
-  const accessToken = await loginAsAdmin(request);
-  const table = await findDemoTable(request, accessToken);
-  const qrResponse = await request.get(`${API_BASE_URL}/api/tables/${table.id}/qr`, {
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
-  });
-  const qr = await parseJson<TableQr>(qrResponse);
-  return qr.token;
+  return (await seedBaselineScenario(request)).qrToken;
 }
 
 export async function ensureDemoTableHasDraftOrder(request: APIRequestContext): Promise<void> {
-  const accessToken = await loginAsAdmin(request);
-  const table = await findDemoTable(request, accessToken);
-  const authHeaders = {
-    Authorization: `Bearer ${accessToken}`,
-  };
-
-  const sessionsResponse = await request.get(
-    `${API_BASE_URL}/api/table-sessions?diningTableId=${table.id}&status=OPEN&size=20&page=0`,
-    { headers: authHeaders },
-  );
-  const sessionsPage = await parseJson<PageResponse<TableSession>>(sessionsResponse);
-
-  const openSession = sessionsPage.content[0]
-    ?? await parseJson<TableSession>(await request.post(`${API_BASE_URL}/api/table-sessions`, {
-      headers: authHeaders,
-      data: {
-        diningTableId: table.id,
-      },
-    }));
-
-  const ordersResponse = await request.get(
-    `${API_BASE_URL}/api/orders?tableSessionId=${openSession.id}&status=DRAFT&size=20&page=0`,
-    { headers: authHeaders },
-  );
-  const ordersPage = await parseJson<PageResponse<{ id: number }>>(ordersResponse);
-
-  if (ordersPage.content.length > 0) {
-    return;
-  }
-
-  await parseJson(
-    await request.post(`${API_BASE_URL}/api/orders`, {
-      headers: authHeaders,
-      data: {
-        orderType: 'DINE_IN',
-        tableSessionId: openSession.id,
-        note: `e2e outage seed for ${table.code}`,
-      },
-    }),
-  );
+  await callDevScenario(request, 'draft-order');
 }
 
 export async function forceVietnameseUi(page: Page) {
@@ -123,16 +103,17 @@ export async function forceVietnameseUi(page: Page) {
 
 export async function loginToStaffDashboard(page: Page) {
   await forceVietnameseUi(page);
-  await page.goto('/staff/login');
-  await page.evaluate(() => {
-    window.localStorage.setItem('h-restaurant-management-system:lang', 'vi');
-  });
-  await page.reload();
+  await page.goto('/staff/login', { waitUntil: 'domcontentloaded' });
 
-  await page.getByLabel('Tên đăng nhập').fill('admin');
-  await page.getByLabel('Mật khẩu').fill('Admin@123456');
-  await page.getByRole('button', { name: /mở bảng điều khiển nhân viên/i }).click();
-  await expect(page.getByText(/Chào mừng bạn quay lại/i)).toBeVisible();
+  const usernameField = page.getByLabel(/Tên đăng nhập|Username/i);
+  const passwordField = page.getByLabel(/Mật khẩu|Password/i);
+  const openDashboardButton = page.getByRole('button', { name: /mở bảng điều khiển nhân viên|open staff dashboard/i });
+
+  await expect(usernameField).toBeVisible();
+  await usernameField.fill('admin');
+  await passwordField.fill('Admin@123456');
+  await openDashboardButton.click();
+  await expect(page.getByText(/Chào mừng bạn quay lại|Welcome back/i)).toBeVisible();
 }
 
 export async function openAnyFloorAction(page: Page) {

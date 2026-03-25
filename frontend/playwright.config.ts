@@ -40,14 +40,24 @@ export default defineConfig({
       dependencies: ['04-staff-pos'],
     },
     {
-      name: '06-staff-resolve-invoice-payment',
-      testMatch: 'staff-resolve-service-invoice-payment.spec.ts',
+      name: '06-staff-layout-visual',
+      testMatch: 'staff-layout-visual.spec.ts',
       dependencies: ['05-staff-menu-outage'],
     },
     {
-      name: '07-customer-qr-billing-payment',
+      name: '07-staff-cashier-scenarios',
+      testMatch: 'staff-cashier-scenarios.spec.ts',
+      dependencies: ['06-staff-layout-visual'],
+    },
+    {
+      name: '08-staff-resolve-invoice-payment',
+      testMatch: 'staff-resolve-service-invoice-payment.spec.ts',
+      dependencies: ['07-staff-cashier-scenarios'],
+    },
+    {
+      name: '09-customer-qr-billing-payment',
       testMatch: 'customer-qr-billing-payment.spec.ts',
-      dependencies: ['06-staff-resolve-invoice-payment'],
+      dependencies: ['08-staff-resolve-invoice-payment'],
     },
   ],
 });

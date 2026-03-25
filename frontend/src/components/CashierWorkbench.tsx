@@ -403,7 +403,11 @@ export function CashierWorkbench({
 
                           {order.status === 'DRAFT' || order.status === 'CONFIRMED' ? (
                             menuItems.length ? (
-                              <form className="grid gap-3 rounded-[22px] border border-forest/15 bg-forest/5 p-4 lg:grid-cols-[minmax(0,1fr)_6.5rem_minmax(0,1fr)_auto] xl:gap-4" onSubmit={(event) => submitAddOrderItem(event, order.id)}>
+                              <form
+                                className="grid gap-3 rounded-[22px] border border-forest/15 bg-forest/5 p-4 lg:grid-cols-[minmax(0,1fr)_6.5rem_minmax(0,1fr)_auto] xl:gap-4"
+                                data-testid={`cashier-add-item-form-${order.id}`}
+                                onSubmit={(event) => submitAddOrderItem(event, order.id)}
+                              >
                                 <label className="block">
                                   <span className="mb-2 block text-xs font-bold uppercase tracking-[0.18em] text-slate">{t('Menu item')}</span>
                                   <select

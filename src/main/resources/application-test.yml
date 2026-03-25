@@ -1,7 +1,21 @@
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,httpexchanges
+  httpexchanges:
+    recording:
+      enabled: true
+
 spring:
   jpa:
     show-sql: false
 
 app:
+  diagnostics:
+    enabled: true
+    slow-request-threshold-ms: 1500
+  dev-support:
+    enabled: true
   storage:
     root: ./target/test-storage

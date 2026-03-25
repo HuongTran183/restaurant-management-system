@@ -1,5 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
-import { ensureFocusedSessionHasOrder, loginToStaffDashboard, openAnyFloorAction } from './helpers';
+import { ensureDemoTableHasDraftOrder, ensureFocusedSessionHasOrder, loginToStaffDashboard, openAnyFloorAction } from './helpers';
 
 function boxesOverlap(left: { x: number; y: number; width: number; height: number }, right: { x: number; y: number; width: number; height: number }) {
   return left.x < right.x + right.width
@@ -25,15 +25,37 @@ async function expectBoxWithinViewport(page: Page, locator: Locator) {
   return safeBox;
 }
 
-test('staff can enter the floor workspace and continue a table flow', async ({ page }) => {
+test('staff can enter the floor workspace and continue a table flow', async ({ page, request }) => {
+  await ensureDemoTableHasDraftOrder(request);
   await loginToStaffDashboard(page);
-  await openAnyFloorAction(page);
-  await ensureFocusedSessionHasOrder(page);
+  const workbench = await openAnyFloorAction(page);
+  const orderCode = workbench.getByText(/ORD-/).first();
+  const createOrderButton = workbench.getByRole('button', { name: /tạo đơn ăn tại chỗ/i }).first();
+  const addItemField = workbench.getByLabel(/thêm món cho đơn/i).first();
+
+  await expect
+    .poll(async () => {
+      if (await addItemField.isVisible().catch(() => false)) {
+        return 'form-ready';
+      }
+
+      if (await orderCode.isVisible().catch(() => false)) {
+        return 'order-ready';
+      }
+
+      if (await createOrderButton.isVisible().catch(() => false)) {
+        return 'create-available';
+      }
+
+      return 'waiting';
+    }, { message: 'expected the focused session to expose an existing order or a create-order action' })
+    .not.toBe('waiting');
 });
 
-test('staff keeps reservation filters and add-item form separated on a narrow viewport', async ({ page }) => {
+test('staff keeps reservation filters and add-item form separated on a narrow viewport', async ({ page, request }) => {
   await page.setViewportSize({ width: 390, height: 844 });
 
+  await ensureDemoTableHasDraftOrder(request);
   await loginToStaffDashboard(page);
   await openAnyFloorAction(page);
   const { workbench } = await ensureFocusedSessionHasOrder(page);
