@@ -163,7 +163,9 @@ public class MenuItemService {
                 menuItem.isActive(),
                 menuItem.getCategory().getId(),
                 menuItem.getCategory().getName(),
-                images
+                images,
+                menuItem.getCreatedAt(),
+                menuItem.getUpdatedAt()
         );
     }
 

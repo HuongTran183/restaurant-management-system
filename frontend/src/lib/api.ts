@@ -29,6 +29,8 @@ export type Category = {
   description: string | null;
   sortOrder: number;
   active: boolean;
+  createdAt: string;
+  updatedAt: string;
 };
 
 export type MenuItemImage = {
@@ -49,6 +51,29 @@ export type MenuItem = {
   categoryId: number;
   categoryName: string;
   images: MenuItemImage[];
+};
+
+export type StaffMenuItemImage = {
+  id: number;
+  filename: string;
+  path: string;
+  contentType: string | null;
+  primaryImage: boolean;
+};
+
+export type StaffMenuItem = {
+  id: number;
+  code: string;
+  name: string;
+  description: string | null;
+  price: number;
+  available: boolean;
+  active: boolean;
+  categoryId: number;
+  categoryName: string;
+  images: StaffMenuItemImage[];
+  createdAt: string;
+  updatedAt: string;
 };
 
 export type TableStatus = 'AVAILABLE' | 'OCCUPIED' | 'RESERVED' | 'CLEANING' | 'LOCKED';
@@ -236,7 +261,7 @@ async function request<T>(
 ): Promise<T> {
   const { timeoutMs = 15_000, ...fetchInit } = init;
   const headers = new Headers(fetchInit.headers);
-  if (!headers.has('Content-Type') && fetchInit.body) {
+  if (!headers.has('Content-Type') && fetchInit.body && !(fetchInit.body instanceof FormData)) {
     headers.set('Content-Type', 'application/json');
   }
   if (token) {
@@ -402,6 +427,94 @@ export const staffApi = {
         query: params.query,
       })}`,
       {},
+      token,
+    ),
+  categories: (
+    token: string,
+    params: { page?: number; size?: number; sort?: string } = {},
+  ) =>
+    request<PageResponse<Category>>(
+      `/api/categories${buildQueryString({
+        page: params.page ?? 0,
+        size: params.size ?? 20,
+        sort: params.sort ?? 'createdAt',
+      })}`,
+      {},
+      token,
+    ),
+  menuItems: (
+    token: string,
+    params: { page?: number; size?: number; sort?: string } = {},
+  ) =>
+    request<PageResponse<StaffMenuItem>>(
+      `/api/menu-items${buildQueryString({
+        page: params.page ?? 0,
+        size: params.size ?? 20,
+        sort: params.sort ?? 'createdAt',
+      })}`,
+      {},
+      token,
+    ),
+  createMenuItem: (
+    token: string,
+    payload: { code: string; name: string; description?: string; price: number; available: boolean; active: boolean; categoryId: number },
+  ) =>
+    request<StaffMenuItem>(
+      '/api/menu-items',
+      {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      },
+      token,
+    ),
+  updateMenuItem: (
+    token: string,
+    menuItemId: number,
+    payload: { code: string; name: string; description?: string; price: number; available: boolean; active: boolean; categoryId: number },
+  ) =>
+    request<StaffMenuItem>(
+      `/api/menu-items/${menuItemId}`,
+      {
+        method: 'PUT',
+        body: JSON.stringify(payload),
+      },
+      token,
+    ),
+  uploadMenuItemImage: (token: string, menuItemId: number, file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return request<StaffMenuItemImage>(
+      `/api/menu-items/${menuItemId}/images`,
+      {
+        method: 'POST',
+        body: formData,
+      },
+      token,
+    );
+  },
+  createCategory: (
+    token: string,
+    payload: { code: string; name: string; description?: string; sortOrder: number; active: boolean },
+  ) =>
+    request<Category>(
+      '/api/categories',
+      {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      },
+      token,
+    ),
+  updateCategory: (
+    token: string,
+    categoryId: number,
+    payload: { code: string; name: string; description?: string; sortOrder: number; active: boolean },
+  ) =>
+    request<Category>(
+      `/api/categories/${categoryId}`,
+      {
+        method: 'PUT',
+        body: JSON.stringify(payload),
+      },
       token,
     ),
   confirmOrder: (token: string, orderId: number) =>

@@ -1,6 +1,7 @@
 package com.restaurant.management.catalog.dto;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.List;
 
 public record MenuItemResponse(
@@ -13,6 +14,8 @@ public record MenuItemResponse(
         boolean active,
         Long categoryId,
         String categoryName,
-        List<MenuItemImageResponse> images
+        List<MenuItemImageResponse> images,
+        Instant createdAt,
+        Instant updatedAt
 ) {
 }

@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 import {
   ApiError,
   type PaymentMethod,
@@ -753,10 +754,10 @@ function StaffWorkspaceHero({
             ))}
           </div>
         </div>
-        <div className="space-y-3">
-          <div className="rounded-[24px] border border-ink/10 bg-white/70 px-4 py-4">
-            <p className="text-xs font-bold uppercase tracking-[0.24em] text-slate">{i18n.t('Active lane')}</p>
-            <p className="mt-2 font-semibold text-ink">{activeLaneTitle}</p>
+          <div className="space-y-3">
+            <div className="rounded-[24px] border border-ink/10 bg-white/70 px-4 py-4">
+              <p className="text-xs font-bold uppercase tracking-[0.24em] text-slate">{i18n.t('Active lane')}</p>
+              <p className="mt-2 font-semibold text-ink">{activeLaneTitle}</p>
             {showLaneSwitcher ? (
               <div className="mt-3 inline-flex flex-wrap rounded-full border border-ink/10 bg-cream/70 p-1">
                 {(['ALL', 'FLOOR', 'BILLING'] as WorkspaceLane[]).map((lane) => (
@@ -781,6 +782,12 @@ function StaffWorkspaceHero({
           </div>
 
           <div className="flex flex-wrap gap-3">
+            <Link className="button-secondary" to="/staff/categories">
+              {i18n.t('Menu Designer')}
+            </Link>
+            <Link className="button-secondary" to="/staff/menu-items">
+              {i18n.t('Dish Mastery')}
+            </Link>
             <button className="button-secondary" onClick={onRefreshWorkspace} type="button">
               {i18n.t('Refresh workspace')}
             </button>

@@ -1,11 +1,13 @@
 import type { ReactNode } from 'react';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, Navigate, Route, Routes } from 'react-router-dom';
+import { Link, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { authApi, type AuthSession } from './lib/api';
 import { LanguageSwitcher } from './components/LanguageSwitcher';
 import { clearSession, msUntilSessionRefresh, readSession, saveSession, shouldRefreshSession } from './lib/session';
+import { CategoryManagementPage } from './pages/CategoryManagementPage';
 import { HomePage } from './pages/HomePage';
+import { MenuItemManagementPage } from './pages/MenuItemManagementPage';
 import { QrExperiencePage } from './pages/QrExperiencePage';
 import { ReservationPage } from './pages/ReservationPage';
 import { StaffDashboardPage } from './pages/StaffDashboardPage';
@@ -15,6 +17,7 @@ const initialSession = typeof window === 'undefined' ? null : readSession();
 
 export default function App() {
   const { t } = useTranslation();
+  const location = useLocation();
   const [session, setSession] = useState<AuthSession | null>(initialSession);
   const [isSessionReady, setIsSessionReady] = useState(initialSession === null);
 
@@ -86,6 +89,57 @@ export default function App() {
     };
   }, [session?.accessTokenExpiresAt, session?.refreshToken]);
 
+  const appRoutes = (
+    <Routes>
+      <Route path="/" element={<HomePage />} />
+      <Route path="/book" element={<ReservationPage />} />
+      <Route path="/qr/:token" element={<QrExperiencePage />} />
+      <Route path="/staff/login" element={<StaffLoginPage onSignedIn={updateSession} session={session} isSessionReady={isSessionReady} />} />
+      <Route
+        path="/staff"
+        element={
+          <ProtectedRoute session={session} isSessionReady={isSessionReady}>
+            <StaffDashboardPage
+              session={session}
+              onLogout={() => updateSession(null)}
+              onRefreshSession={refreshCurrentSession}
+            />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/staff/categories"
+        element={
+          <ProtectedRoute session={session} isSessionReady={isSessionReady}>
+            <CategoryManagementPage
+              session={session}
+              onLogout={() => updateSession(null)}
+              onRefreshSession={refreshCurrentSession}
+            />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/staff/menu-items"
+        element={
+          <ProtectedRoute session={session} isSessionReady={isSessionReady}>
+            <MenuItemManagementPage
+              session={session}
+              onLogout={() => updateSession(null)}
+              onRefreshSession={refreshCurrentSession}
+            />
+          </ProtectedRoute>
+        }
+      />
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
+  );
+
+  const isStandaloneRoute = location.pathname.startsWith('/staff/categories') || location.pathname.startsWith('/staff/menu-items');
+  if (isStandaloneRoute) {
+    return appRoutes;
+  }
+
   return (
     <div className="min-h-screen bg-mesh text-ink">
       <header className="sticky top-0 z-30 border-b border-ink/10 bg-cream/80 backdrop-blur">
@@ -105,6 +159,8 @@ export default function App() {
               <TopNavLink to="/">{t('Menu')}</TopNavLink>
               <TopNavLink to="/book">{t('Reservations')}</TopNavLink>
               <TopNavLink to="/staff">{t('STAFF')}</TopNavLink>
+              <TopNavLink to="/staff/categories">{t('Menu Designer')}</TopNavLink>
+              <TopNavLink to="/staff/menu-items">{t('Dish Mastery')}</TopNavLink>
             </nav>
             <LanguageSwitcher />
           </div>
@@ -112,25 +168,7 @@ export default function App() {
       </header>
 
       <main className="mx-auto flex max-w-7xl flex-col gap-8 px-4 py-6 sm:px-6 lg:px-8">
-        <Routes>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/book" element={<ReservationPage />} />
-          <Route path="/qr/:token" element={<QrExperiencePage />} />
-          <Route path="/staff/login" element={<StaffLoginPage onSignedIn={updateSession} session={session} isSessionReady={isSessionReady} />} />
-          <Route
-            path="/staff"
-            element={
-              <ProtectedRoute session={session} isSessionReady={isSessionReady}>
-                <StaffDashboardPage
-                  session={session}
-                  onLogout={() => updateSession(null)}
-                  onRefreshSession={refreshCurrentSession}
-                />
-              </ProtectedRoute>
-            }
-          />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
+        {appRoutes}
       </main>
     </div>
   );
