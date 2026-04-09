@@ -70,4 +70,37 @@
   .data-row {
     @apply flex items-center justify-between gap-4 rounded-[22px] border border-ink/10 bg-white/75 px-4 py-4;
   }
+
+  /* Admin-specific components */
+  .badge-urgent {
+    @apply flex h-6 w-6 items-center justify-center rounded-full bg-ember text-xs font-bold text-cream;
+  }
+
+  .badge-neutral {
+    @apply flex h-6 w-6 items-center justify-center rounded-full bg-slate text-xs font-bold text-cream;
+  }
+
+  .button-danger {
+    @apply inline-flex items-center gap-2 rounded-full bg-ember px-5 py-3 text-sm font-semibold text-cream transition hover:-translate-y-0.5 hover:bg-ink disabled:cursor-not-allowed disabled:opacity-60;
+  }
+
+  .button-icon {
+    @apply inline-flex items-center justify-center rounded-full border border-ink/10 bg-white/80 w-10 h-10 text-ink transition hover:border-forest/25 hover:text-forest hover:bg-forest/5;
+  }
+
+  .menu-item-active {
+    @apply bg-forest/10 text-forest border-l-4 border-forest;
+  }
+
+  .menu-item-hover {
+    @apply hover:bg-white/60 hover:text-forest;
+  }
+
+  .empty-state {
+    @apply rounded-[24px] border border-ink/10 bg-white/50 px-6 py-12 text-center;
+  }
+
+  .card-urgent {
+    @apply border border-ember/30 ring-2 ring-ember/20;
+  }
 }

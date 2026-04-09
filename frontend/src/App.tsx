@@ -4,12 +4,18 @@ import { useTranslation } from 'react-i18next';
 import { Link, Navigate, Route, Routes } from 'react-router-dom';
 import { authApi, type AuthSession } from './lib/api';
 import { LanguageSwitcher } from './components/LanguageSwitcher';
+import { AdminLayout } from './components/AdminLayout';
 import { clearSession, msUntilSessionRefresh, readSession, saveSession, shouldRefreshSession } from './lib/session';
 import { HomePage } from './pages/HomePage';
 import { QrExperiencePage } from './pages/QrExperiencePage';
 import { ReservationPage } from './pages/ReservationPage';
-import { StaffDashboardPage } from './pages/StaffDashboardPage';
 import { StaffLoginPage } from './pages/StaffLoginPage';
+import { AdminDashboardPage } from './pages/admin/AdminDashboardPage';
+import { AdminReservationsPage } from './pages/admin/AdminReservationsPage';
+import { AdminFloorPage } from './pages/admin/AdminFloorPage';
+import { AdminOrdersPage } from './pages/admin/AdminOrdersPage';
+import { AdminPaymentsPage } from './pages/admin/AdminPaymentsPage';
+import { AdminRequestsPage } from './pages/admin/AdminRequestsPage';
 
 const initialSession = typeof window === 'undefined' ? null : readSession();
 
@@ -87,52 +93,122 @@ export default function App() {
   }, [session?.accessTokenExpiresAt, session?.refreshToken]);
 
   return (
-    <div className="min-h-screen bg-mesh text-ink">
-      <header className="sticky top-0 z-30 border-b border-ink/10 bg-cream/80 backdrop-blur">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
-          <Link to="/" className="flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-forest text-sm font-bold uppercase tracking-[0.24em] text-cream">
-              RMS
-            </div>
-            <div>
-              <p className="font-display text-2xl leading-none">Restaurant OS</p>
-              <p className="text-sm text-slate">{t('POS, QR dining, and booking in one orbit')}</p>
-            </div>
-          </Link>
+    <Routes>
+      {/* Staff Login Route */}
+      <Route path="/staff/login" element={<StaffLoginPage onSignedIn={updateSession} session={session} isSessionReady={isSessionReady} />} />
 
-          <div className="flex items-center gap-4">
-            <nav className="hidden items-center gap-2 md:flex">
-              <TopNavLink to="/">{t('Menu')}</TopNavLink>
-              <TopNavLink to="/book">{t('Reservations')}</TopNavLink>
-              <TopNavLink to="/staff">{t('STAFF')}</TopNavLink>
-            </nav>
-            <LanguageSwitcher />
+      {/* Admin Layout Routes */}
+      <Route
+        path="/staff"
+        element={
+          <ProtectedRoute session={session} isSessionReady={isSessionReady}>
+            <AdminLayout session={session} onLogout={() => updateSession(null)} />
+          </ProtectedRoute>
+        }
+      >
+        <Route
+          index
+          element={
+            <AdminDashboardPage
+              session={session}
+              onLogout={() => updateSession(null)}
+              onRefreshSession={refreshCurrentSession}
+            />
+          }
+        />
+        <Route
+          path="reservations"
+          element={
+            <AdminReservationsPage
+              session={session}
+              onLogout={() => updateSession(null)}
+              onRefreshSession={refreshCurrentSession}
+            />
+          }
+        />
+        <Route
+          path="floor"
+          element={
+            <AdminFloorPage
+              session={session}
+              onLogout={() => updateSession(null)}
+              onRefreshSession={refreshCurrentSession}
+            />
+          }
+        />
+        <Route
+          path="orders"
+          element={
+            <AdminOrdersPage
+              session={session}
+              onLogout={() => updateSession(null)}
+              onRefreshSession={refreshCurrentSession}
+            />
+          }
+        />
+        <Route
+          path="payments"
+          element={
+            <AdminPaymentsPage
+              session={session}
+              onLogout={() => updateSession(null)}
+              onRefreshSession={refreshCurrentSession}
+            />
+          }
+        />
+        <Route
+          path="requests"
+          element={
+            <AdminRequestsPage
+              session={session}
+              onLogout={() => updateSession(null)}
+              onRefreshSession={refreshCurrentSession}
+            />
+          }
+        />
+        <Route path="*" element={<Navigate to="/staff" replace />} />
+      </Route>
+
+      {/* Public Layout Routes */}
+      <Route
+        path="/*"
+        element={
+          <div className="min-h-screen bg-mesh text-ink">
+            <header className="sticky top-0 z-30 border-b border-ink/10 bg-cream/80 backdrop-blur">
+              <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
+                <Link to="/" className="flex items-center gap-3">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-forest text-sm font-bold uppercase tracking-[0.24em] text-cream">
+                    RMS
+                  </div>
+                  <div>
+                    <p className="font-display text-2xl leading-none">Restaurant OS</p>
+                    <p className="text-sm text-slate">{t('POS, QR dining, and booking in one orbit')}</p>
+                  </div>
+                </Link>
+
+                <div className="flex items-center gap-4">
+                  <nav className="hidden items-center gap-2 md:flex">
+                    <TopNavLink to="/">{t('Menu')}</TopNavLink>
+                    <TopNavLink to="/book">{t('Reservations')}</TopNavLink>
+                    <TopNavLink to="/staff">{t('STAFF')}</TopNavLink>
+                  </nav>
+                  <LanguageSwitcher />
+                </div>
+              </div>
+            </header>
+
+            <main className="mx-auto flex max-w-7xl flex-col gap-8 px-4 py-6 sm:px-6 lg:px-8">
+              <Routes>
+                <Route path="/" element={<HomePage />} />
+                <Route path="/book" element={<ReservationPage />} />
+                <Route path="/qr/:token" element={<QrExperiencePage />} />
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Routes>
+            </main>
           </div>
-        </div>
-      </header>
-
-      <main className="mx-auto flex max-w-7xl flex-col gap-8 px-4 py-6 sm:px-6 lg:px-8">
-        <Routes>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/book" element={<ReservationPage />} />
-          <Route path="/qr/:token" element={<QrExperiencePage />} />
-          <Route path="/staff/login" element={<StaffLoginPage onSignedIn={updateSession} session={session} isSessionReady={isSessionReady} />} />
-          <Route
-            path="/staff"
-            element={
-              <ProtectedRoute session={session} isSessionReady={isSessionReady}>
-                <StaffDashboardPage
-                  session={session}
-                  onLogout={() => updateSession(null)}
-                  onRefreshSession={refreshCurrentSession}
-                />
-              </ProtectedRoute>
-            }
-          />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </main>
-    </div>
+        }
+      />
+    </Routes>
   );
 }
 

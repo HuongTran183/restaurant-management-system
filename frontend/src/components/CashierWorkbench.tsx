@@ -212,20 +212,19 @@ export function CashierWorkbench({
   }
 
   const layoutClass = showOrderOperations && showBillingOperations
-    ? 'grid gap-6 xl:grid-cols-[1.05fr_0.95fr]'
-    : 'grid gap-6';
+    ? 'grid gap-4 xl:grid-cols-[1.05fr_0.95fr]'
+    : 'grid gap-4';
 
   return (
     <div className={layoutClass}>
       {showOrderOperations ? (
-        <section className="space-y-4 rounded-[28px] border border-ink/10 bg-white/65 p-5">
-          <div className="flex flex-wrap items-end justify-between gap-3">
+        <section className="space-y-3 rounded-[24px] border border-ink/10 bg-white/65 p-4">
+          <div className="flex items-center justify-between gap-2">
             <div>
-              <p className="text-xs font-bold uppercase tracking-[0.24em] text-slate">{t('Order operations')}</p>
-              <h3 className="mt-2 font-display text-2xl text-ink">{t('Confirm live tickets and keep the floor moving')}</h3>
+              <p className="text-xs font-bold uppercase tracking-[0.22em] text-slate">{t('Order Operations')}</p>
             </div>
-            <span className="text-xs font-bold uppercase tracking-[0.22em] text-slate">
-              {orders.length} {t('recent orders')}
+            <span className="text-xs font-bold uppercase tracking-[0.18em] text-slate">
+              {orders.length}
             </span>
           </div>
 
@@ -522,14 +521,13 @@ export function CashierWorkbench({
       ) : null}
 
       {showBillingOperations ? (
-        <section className="space-y-4 rounded-[28px] border border-ink/10 bg-white/65 p-5">
-          <div className="flex flex-wrap items-end justify-between gap-3">
+        <section className="space-y-3 rounded-[24px] border border-ink/10 bg-white/65 p-4">
+          <div className="flex items-center justify-between gap-2">
             <div>
-              <p className="text-xs font-bold uppercase tracking-[0.24em] text-slate">{t('Invoices and payments')}</p>
-              <h3 className="mt-2 font-display text-2xl text-ink">{t('Collect payment against open invoices')}</h3>
+              <p className="text-xs font-bold uppercase tracking-[0.22em] text-slate">{t('Payments')}</p>
             </div>
-            <span className="text-xs font-bold uppercase tracking-[0.22em] text-slate">
-              {openInvoices.length} {t('payable invoices')}
+            <span className="text-xs font-bold uppercase tracking-[0.18em] text-slate">
+              {openInvoices.length}
             </span>
           </div>
 

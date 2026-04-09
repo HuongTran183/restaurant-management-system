@@ -1,5 +1,4 @@
 import clsx from 'clsx';
-import type { ReactNode } from 'react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
@@ -19,7 +18,7 @@ import {
 import { FloorOverview, type FloorOverviewActionState } from '../components/FloorOverview';
 import { StaffOperationsWorkbenchPanel } from '../components/StaffOperationsWorkbenchPanel';
 import i18n from '../i18n/i18n';
-import { ErrorState, InfoPair, InlineError, LoadingState, MetricCard, StatusPill } from './PagePrimitives';
+import { ErrorState, InfoPair, InlineError, KPIMetric, LoadingState, StatusPill, DataPanel, EmptyMessage } from './PagePrimitives';
 import { formatDateTime } from './pageUtils';
 
 type ReservationActionInput =
@@ -73,11 +72,8 @@ export function StaffDashboardPage({
   const [floorActionState, setFloorActionState] = useState<FloorOverviewActionState>(null);
   const reservationPanelRef = useRef<HTMLDivElement | null>(null);
   const workbenchPanelRef = useRef<HTMLDivElement | null>(null);
-  const showLaneSwitcher = canManageFloor && canManageBilling;
   const showFloorLane = canManageFloor && workspaceLane !== 'BILLING';
   const showBillingLane = canManageBilling && workspaceLane !== 'FLOOR';
-  const activeLaneTitle = describeWorkspaceLane(workspaceLane, canManageFloor, canManageBilling);
-  const activeLaneBody = describeWorkspaceLaneBody(workspaceLane, canManageFloor, canManageBilling);
   const workbenchTitle = showFloorLane && showBillingLane
     ? i18n.t('Operations workbench')
     : showFloorLane
@@ -111,18 +107,6 @@ export function StaffDashboardPage({
     window.requestAnimationFrame(() => {
       ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
-  };
-
-  const focusReservationWorkflow = (reservation: Reservation) => {
-    setReservationQueueScope(
-      reservation.status === 'CANCELLED' || reservation.status === 'COMPLETED'
-        ? 'HISTORY'
-        : 'ACTIVE',
-    );
-    setReservationHostFilter('ALL');
-    setReservationAreaFilter('ALL');
-    setReservationSearch(reservation.reservationCode);
-    scrollToPanel(reservationPanelRef);
   };
 
   const focusOrderWorkflow = (options: { orderCode?: string; sessionId: number }) => {
@@ -501,10 +485,6 @@ export function StaffDashboardPage({
     },
   });
 
-  const refreshWorkspace = () => {
-    void queryClient.invalidateQueries({ queryKey: ['staff'] });
-  };
-
   const activeSession = orderSessionFilter === null
     ? null
     : tableSessionsQuery.data?.find((sessionItem) => sessionItem.id === orderSessionFilter) ?? null;
@@ -541,36 +521,25 @@ export function StaffDashboardPage({
   }, [tableSessionsQuery.data]);
 
   return (
-    <div className="space-y-8">
-      <StaffWorkspaceHero
-        activeLaneBody={activeLaneBody}
-        activeLaneTitle={activeLaneTitle}
-        onLogout={onLogout}
-        onRefreshWorkspace={refreshWorkspace}
-        onWorkspaceLaneChange={(lane) => setWorkspaceLane(lane)}
-        session={session}
-        showLaneSwitcher={showLaneSwitcher}
-        userRoles={userRoles}
-        workspaceLane={workspaceLane}
-      />
-
+    <div className="space-y-6">
+      {/* Quick KPI Row - Top Priority */}
       {dashboardQuery.isLoading ? <LoadingState label={i18n.t('Loading dashboard summary')} /> : null}
       {dashboardQuery.error ? <ErrorState error={dashboardQuery.error} /> : null}
 
       {dashboardQuery.data ? (
-        <section className={clsx('grid gap-4 md:grid-cols-2', showFloorLane && showBillingLane ? 'xl:grid-cols-5' : showFloorLane ? 'xl:grid-cols-3' : 'xl:grid-cols-2')}>
-          {showFloorLane ? <MetricCard label={i18n.t('Orders')} value={String(dashboardQuery.data.orders.totalElements)} tone="forest" /> : null}
-          {showFloorLane ? <MetricCard label={i18n.t('Reservations')} value={String(dashboardQuery.data.reservations.totalElements)} tone="ember" /> : null}
-          {showFloorLane ? <MetricCard label={i18n.t('Service requests')} value={String(dashboardQuery.data.serviceRequests.totalElements)} tone="slate" /> : null}
-          {showBillingLane ? <MetricCard label={i18n.t('Invoices')} value={String(dashboardQuery.data.invoices.totalElements)} tone="forest" /> : null}
-          {showBillingLane ? <MetricCard label={i18n.t('Payments')} value={String(dashboardQuery.data.payments.totalElements)} tone="ember" /> : null}
+        <section className={clsx('grid gap-3', showFloorLane && showBillingLane ? 'sm:grid-cols-3 lg:grid-cols-5' : showFloorLane ? 'sm:grid-cols-2 lg:grid-cols-3' : 'lg:grid-cols-2')}>
+          {showFloorLane ? <KPIMetric label={i18n.t('Orders')} value={String(dashboardQuery.data.orders.totalElements)} tone="forest" /> : null}
+          {showFloorLane ? <KPIMetric label={i18n.t('Reservations')} value={String(dashboardQuery.data.reservations.totalElements)} tone="ember" /> : null}
+          {showFloorLane ? <KPIMetric label={i18n.t('Requests')} value={String(dashboardQuery.data.serviceRequests.totalElements)} tone="slate" urgent={dashboardQuery.data.serviceRequests.totalElements > 0} /> : null}
+          {showBillingLane ? <KPIMetric label={i18n.t('Invoices')} value={String(dashboardQuery.data.invoices.totalElements)} tone="forest" /> : null}
+          {showBillingLane ? <KPIMetric label={i18n.t('Payments')} value={String(dashboardQuery.data.payments.totalElements)} tone="ember" /> : null}
         </section>
       ) : null}
 
       {!showFloorLane && !showBillingLane ? (
-        <section className="panel px-6 py-8 sm:px-8">
+        <div className="panel px-6 py-8 sm:px-8">
           <EmptyMessage message={i18n.t('No workspace sections are available for the current role.')} />
-        </section>
+        </div>
       ) : null}
 
       {showFloorLane ? (
@@ -591,7 +560,6 @@ export function StaffDashboardPage({
               actionState={floorActionState}
               onCloseSession={(sessionItem, table) => floorActionMutation.mutate({ kind: 'close-session', session: sessionItem, table })}
               onJumpToOrder={(sessionItem) => focusOrderWorkflow({ sessionId: sessionItem.id })}
-              onJumpToReservation={(reservation) => focusReservationWorkflow(reservation)}
               onOpenSession={(table) => floorActionMutation.mutate({ kind: 'open-session', table })}
               onSeatWalkIn={(table) => floorActionMutation.mutate({ kind: 'seat-walk-in', table })}
               reservations={floorReservationsQuery.data}
@@ -717,83 +685,6 @@ type ReservationQueueSummary = {
   nextService: number;
 };
 
-function StaffWorkspaceHero({
-  activeLaneBody,
-  activeLaneTitle,
-  onLogout,
-  onRefreshWorkspace,
-  onWorkspaceLaneChange,
-  session,
-  showLaneSwitcher,
-  userRoles,
-  workspaceLane,
-}: {
-  activeLaneBody: string;
-  activeLaneTitle: string;
-  onLogout: () => void;
-  onRefreshWorkspace: () => void;
-  onWorkspaceLaneChange: (lane: WorkspaceLane) => void;
-  session: AuthSession | null;
-  showLaneSwitcher: boolean;
-  userRoles: AuthSession['user']['roles'];
-  workspaceLane: WorkspaceLane;
-}) {
-  return (
-    <section className="panel overflow-hidden px-6 py-8 sm:px-8">
-      <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-        <div>
-          <p className="text-xs font-bold uppercase tracking-[0.24em] text-slate">{i18n.t('Staff workspace')}</p>
-          <h1 className="mt-3 font-display text-4xl text-ink">
-            {i18n.t('Welcome back, {{name}}.', { name: session?.user.fullName })}
-          </h1>
-          <p className="mt-4 max-w-2xl text-base leading-8 text-slate">{activeLaneBody}</p>
-          <div className="mt-4 flex flex-wrap gap-2">
-            {userRoles.map((role) => (
-              <RoleChip key={role} role={role} />
-            ))}
-          </div>
-        </div>
-        <div className="space-y-3">
-          <div className="rounded-[24px] border border-ink/10 bg-white/70 px-4 py-4">
-            <p className="text-xs font-bold uppercase tracking-[0.24em] text-slate">{i18n.t('Active lane')}</p>
-            <p className="mt-2 font-semibold text-ink">{activeLaneTitle}</p>
-            {showLaneSwitcher ? (
-              <div className="mt-3 inline-flex flex-wrap rounded-full border border-ink/10 bg-cream/70 p-1">
-                {(['ALL', 'FLOOR', 'BILLING'] as WorkspaceLane[]).map((lane) => (
-                  <button
-                    key={lane}
-                    className={clsx(
-                      'rounded-full px-4 py-2 text-xs font-bold uppercase tracking-[0.18em] transition',
-                      workspaceLane === lane ? 'bg-forest text-cream' : 'text-slate hover:text-ink',
-                    )}
-                    onClick={() => onWorkspaceLaneChange(lane)}
-                    type="button"
-                  >
-                    {lane === 'ALL'
-                      ? i18n.t('All lanes')
-                      : lane === 'FLOOR'
-                        ? i18n.t('Floor lane')
-                        : i18n.t('Billing lane')}
-                  </button>
-                ))}
-              </div>
-            ) : null}
-          </div>
-
-          <div className="flex flex-wrap gap-3">
-            <button className="button-secondary" onClick={onRefreshWorkspace} type="button">
-              {i18n.t('Refresh workspace')}
-            </button>
-            <button className="button-secondary" onClick={onLogout} type="button">
-              {i18n.t('Log out')}
-            </button>
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
-
 function StaffReservationQueuePanel({
   actionError,
   availableTables,
@@ -845,55 +736,73 @@ function StaffReservationQueuePanel({
       title={i18n.t('Reservation queue')}
       subtitle={i18n.t('Confirm, seat, and complete reservations directly from the staff surface.')}
     >
-      <div className="mb-5 grid gap-3 lg:grid-cols-[auto_minmax(0,1fr)_auto] lg:items-end" data-testid="reservation-queue-header">
-        <div className="inline-flex w-fit rounded-full border border-ink/10 bg-white/80 p-1">
-          {(['ACTIVE', 'HISTORY', 'ALL'] as ReservationQueueScope[]).map((queueScope) => (
-            <button
-              key={queueScope}
-              className={clsx(
-                'rounded-full px-4 py-2 text-xs font-bold uppercase tracking-[0.18em] transition',
-                scope === queueScope ? 'bg-forest text-cream' : 'text-slate hover:text-ink',
-              )}
-              onClick={() => onScopeChange(queueScope)}
-              type="button"
-            >
-              {queueScope === 'ACTIVE'
-                ? i18n.t('Active')
-                : queueScope === 'HISTORY'
-                  ? i18n.t('History')
-                  : i18n.t('All')}
-            </button>
-          ))}
+      <div className="space-y-4">
+        {/* Top row: Scope + Clear button */}
+        <div className="flex items-end justify-between gap-3">
+          <div className="inline-flex rounded-full border border-ink/10 bg-white/80 p-1">
+            {(['ACTIVE', 'HISTORY', 'ALL'] as ReservationQueueScope[]).map((queueScope) => (
+              <button
+                key={queueScope}
+                className={clsx(
+                  'rounded-full px-3 py-2 text-xs font-bold uppercase tracking-[0.18em] transition',
+                  scope === queueScope ? 'bg-forest text-cream' : 'text-slate hover:text-ink',
+                )}
+                onClick={() => onScopeChange(queueScope)}
+                type="button"
+              >
+                {queueScope === 'ACTIVE'
+                  ? i18n.t('Active')
+                  : queueScope === 'HISTORY'
+                    ? i18n.t('History')
+                    : i18n.t('All')}
+              </button>
+            ))}
+          </div>
+          <button className="button-chip" disabled={!canClearFilters} onClick={onClearFilters} type="button">
+            {i18n.t('Clear')}
+          </button>
         </div>
 
-        <label className="block min-w-0">
-          <span className="mb-2 block text-xs font-bold uppercase tracking-[0.24em] text-slate">
-            {i18n.t('Search reservations')}
-          </span>
-          <input
-            className="field"
-            onChange={(event) => onSearchChange(event.target.value)}
-            placeholder={i18n.t('Code, customer, or phone')}
-            value={search}
-          />
-        </label>
+        {/* Search + Area filters row */}
+        <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
+          <label className="block">
+            <span className="mb-2 block text-xs font-bold uppercase tracking-[0.24em] text-slate">
+              {i18n.t('Search')}
+            </span>
+            <input
+              className="field"
+              onChange={(event) => onSearchChange(event.target.value)}
+              placeholder={i18n.t('Code, name, phone')}
+              value={search}
+            />
+          </label>
+          <label className="block">
+            <span className="mb-2 block text-xs font-bold uppercase tracking-[0.24em] text-slate">
+              {i18n.t('Area')}
+            </span>
+            <select className="field" onChange={(event) => onAreaFilterChange(event.target.value)} value={areaFilter}>
+              <option value="ALL">{i18n.t('All areas')}</option>
+              <option value="__ANY__">{i18n.t('Any area')}</option>
+              {areaOptions.map((area) => (
+                <option key={area} value={area}>
+                  {area}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
 
-        <button className="button-chip" disabled={!canClearFilters} onClick={onClearFilters} type="button">
-          {i18n.t('Clear filters')}
-        </button>
-      </div>
-
-      <div className="mb-5 grid gap-3 xl:grid-cols-[1.2fr_16rem]">
+        {/* Host filters - horizontal scrollable on mobile */}
         <div className="flex flex-wrap gap-2">
           {([
-            ['ALL', i18n.t('All arrivals')],
+            ['ALL', i18n.t('All')],
             ['NEEDS_TABLE', i18n.t('Need table')],
             ['NEXT_SERVICE', i18n.t('Next 3h')],
             ['LARGE_PARTY', i18n.t('Large party')],
           ] as Array<[ReservationHostFilter, string]>).map(([filterKey, label]) => (
             <button
               key={filterKey}
-              className={clsx('button-chip', hostFilter === filterKey && 'border-forest/25 bg-forest/10 text-forest')}
+              className={clsx('button-chip text-xs', hostFilter === filterKey && 'border-forest/25 bg-forest/10 text-forest')}
               onClick={() => onHostFilterChange(filterKey)}
               type="button"
             >
@@ -902,34 +811,20 @@ function StaffReservationQueuePanel({
           ))}
         </div>
 
-        <label className="block">
-          <span className="mb-2 block text-xs font-bold uppercase tracking-[0.24em] text-slate">
-            {i18n.t('Area focus')}
-          </span>
-          <select className="field" onChange={(event) => onAreaFilterChange(event.target.value)} value={areaFilter}>
-            <option value="ALL">{i18n.t('All areas')}</option>
-            <option value="__ANY__">{i18n.t('Any area')}</option>
-            {areaOptions.map((area) => (
-              <option key={area} value={area}>
-                {area}
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
-
-      <div className="mb-5 grid gap-3 md:grid-cols-3">
-        <MiniQueueStat label={i18n.t('Visible')} value={String(quickSummary.total)} helper={i18n.t('after current filters')} />
-        <MiniQueueStat
-          label={i18n.t('Need table')}
-          value={String(quickSummary.needsTable)}
-          helper={i18n.t('confirmed parties still unassigned')}
-        />
-        <MiniQueueStat
-          label={i18n.t('Next 3h')}
-          value={String(quickSummary.nextService)}
-          helper={i18n.t('upcoming arrival pressure')}
-        />
+        {/* Mini stats - compact row */}
+        <div className="grid gap-2 md:grid-cols-3">
+          <MiniQueueStat label={i18n.t('Visible')} value={String(quickSummary.total)} helper={i18n.t('after filters')} />
+          <MiniQueueStat
+            label={i18n.t('Need table')}
+            value={String(quickSummary.needsTable)}
+            helper={i18n.t('unassigned')}
+          />
+          <MiniQueueStat
+            label={i18n.t('Next 3h')}
+            value={String(quickSummary.nextService)}
+            helper={i18n.t('arrivals coming')}
+          />
+        </div>
       </div>
 
       {reservationsLoading ? <LoadingState label={i18n.t('Loading reservations')} /> : null}
@@ -1265,54 +1160,6 @@ function TableSessionList({ sessions }: { sessions: TableSession[] }) {
   );
 }
 
-function describeWorkspaceLane(lane: WorkspaceLane, canManageFloor: boolean, canManageBilling: boolean) {
-  if (!canManageFloor && canManageBilling) {
-    return i18n.t('Cashier lane');
-  }
-
-  if (canManageFloor && !canManageBilling) {
-    return i18n.t('Floor lane');
-  }
-
-  if (lane === 'FLOOR') {
-    return i18n.t('Floor lane');
-  }
-
-  if (lane === 'BILLING') {
-    return i18n.t('Billing lane');
-  }
-
-  return i18n.t('Control lane');
-}
-
-function describeWorkspaceLaneBody(lane: WorkspaceLane, canManageFloor: boolean, canManageBilling: boolean) {
-  if (!canManageFloor && canManageBilling) {
-    return i18n.t('Collect payment, reconcile invoices, and stay focused on cashier handoff without floor-only noise.');
-  }
-
-  if (canManageFloor && !canManageBilling) {
-    return i18n.t('Keep reservations moving, clear service requests, and manage live tables without cashier-only distractions.');
-  }
-
-  if (lane === 'FLOOR') {
-    return i18n.t('Focus on reservations, sessions, and live table action while billing stays out of the way.');
-  }
-
-  if (lane === 'BILLING') {
-    return i18n.t('Focus on invoices and payments while floor operations stay out of the way.');
-  }
-
-  return i18n.t('Keep reservations moving, clear service requests, and monitor back-office activity without leaving the floor console.');
-}
-
-function RoleChip({ role }: { role: AuthSession['user']['roles'][number] }) {
-  return (
-    <span className="rounded-full border border-ink/10 bg-white/75 px-3 py-1 text-xs font-bold uppercase tracking-[0.2em] text-slate">
-      {role.toLowerCase()}
-    </span>
-  );
-}
-
 function MiniQueueStat({ helper, label, value }: { helper: string; label: string; value: string }) {
   return (
     <div className="rounded-[20px] border border-ink/10 bg-white/75 px-4 py-4">
@@ -1382,20 +1229,6 @@ function summarizeReservationQueue(reservations: Reservation[]) {
     },
     { total: 0, needsTable: 0, largeParty: 0, nextService: 0 },
   );
-}
-
-function DataPanel({ children, subtitle, title, testId }: { children: ReactNode; subtitle: string; title: string; testId?: string }) {
-  return (
-    <section className="panel px-5 py-6" data-testid={testId}>
-      <p className="text-xs font-bold uppercase tracking-[0.24em] text-slate">{title}</p>
-      <p className="mt-2 text-sm leading-7 text-slate">{subtitle}</p>
-      <div className="mt-5">{children}</div>
-    </section>
-  );
-}
-
-function EmptyMessage({ message }: { message: string }) {
-  return <div className="rounded-[22px] border border-dashed border-ink/15 bg-white/60 px-4 py-5 text-sm leading-7 text-slate">{message}</div>;
 }
 
 function reservationStatusTone(status: ReservationStatus) {

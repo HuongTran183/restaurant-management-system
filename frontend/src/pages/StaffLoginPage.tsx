@@ -17,7 +17,7 @@ export function StaffLoginPage({
 }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const [form, setForm] = useState({ username: 'admin', password: 'Admin@123456' });
+  const [form, setForm] = useState({ username: '', password: '' });
 
   const loginMutation = useMutation({
     mutationFn: () => authApi.login(form),
@@ -38,6 +38,12 @@ export function StaffLoginPage({
 
   return (
     <section className="panel mx-auto max-w-xl px-6 py-8 sm:px-8">
+      <button
+        onClick={() => navigate('/')}
+        className="mb-6 text-xs font-semibold text-slate hover:text-ink transition flex items-center gap-1"
+      >
+        ← {t('Back')}
+      </button>
       <p className="text-xs font-bold uppercase tracking-[0.24em] text-slate">{t('Staff access')}</p>
       <h1 className="mt-3 font-display text-4xl text-ink">{t('Sign in to the floor console.')}</h1>
       <p className="mt-4 text-base leading-8 text-slate">

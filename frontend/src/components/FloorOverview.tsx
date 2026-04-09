@@ -9,7 +9,6 @@ type FloorOverviewProps = {
   actionState?: FloorOverviewActionState;
   onCloseSession?: (session: TableSession, table: DiningTable) => void;
   onJumpToOrder?: (session: TableSession, table: DiningTable) => void;
-  onJumpToReservation?: (reservation: Reservation, table: DiningTable) => void;
   onOpenSession?: (table: DiningTable) => void;
   onSeatWalkIn?: (table: DiningTable) => void;
   reservations: Reservation[];
@@ -24,7 +23,6 @@ export function FloorOverview({
   actionState = null,
   onCloseSession,
   onJumpToOrder,
-  onJumpToReservation,
   onOpenSession,
   onSeatWalkIn,
   reservations,
@@ -114,9 +112,9 @@ export function FloorOverview({
     <div className="space-y-5">
       <div className="grid gap-4 xl:grid-cols-[1.3fr_0.7fr] xl:items-end">
         <div className="flex flex-wrap gap-2">
-          <FloorMetric label={i18n.t('Tables')} value={String(floorStats.total)} tone="forest" />
-          <FloorMetric label={i18n.t('Live sessions')} value={String(floorStats.withSession)} tone="ember" />
-          <FloorMetric label={i18n.t('Active reservations')} value={String(floorStats.withReservation)} tone="slate" />
+          <KPILabel label={i18n.t('Tables')} value={String(floorStats.total)} tone="forest" />
+          <KPILabel label={i18n.t('Live sessions')} value={String(floorStats.withSession)} tone="ember" />
+          <KPILabel label={i18n.t('Active reservations')} value={String(floorStats.withReservation)} tone="slate" />
         </div>
 
         <div className="grid gap-3 sm:grid-cols-2">
@@ -151,100 +149,88 @@ export function FloorOverview({
             const isBusy = actionState?.tableId === table.id;
             const canOpenSession = session === undefined && table.status !== 'CLEANING' && table.status !== 'LOCKED';
             const canSeatWalkIn = canOpenSession && reservation === undefined && table.status === 'AVAILABLE';
-            const actionLabel =
-              actionState?.kind === 'seat-walk-in'
-                ? i18n.t('Seating...')
-                : actionState?.kind === 'close-session'
-                    ? i18n.t('Closing...')
-                    : i18n.t('Opening...');
+
 
             return (
-              <article key={table.id} className="rounded-[28px] border border-ink/10 bg-white/75 p-5 shadow-float">
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <p className="text-xs font-bold uppercase tracking-[0.22em] text-slate">{table.code}</p>
-                    <h3 className="mt-2 font-display text-2xl text-ink">{table.name}</h3>
-                    <p className="mt-2 text-sm leading-6 text-slate">{table.areaName}</p>
+              <article key={table.id} className="rounded-[22px] border border-ink/10 bg-white/75 p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="space-y-1 min-w-0">
+                    <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate">{table.code}</p>
+                    <p className="font-semibold text-ink truncate">{table.name}</p>
+                    <p className="text-xs text-slate">{table.areaName}</p>
                   </div>
                   <StatusChip tone={tableStatusTone(table.status)}>{i18n.t(table.status)}</StatusChip>
                 </div>
 
-                <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                  <Detail label={i18n.t('Seats')} value={`${table.seatCount}`} />
-                  <Detail label={i18n.t('Area')} value={table.areaName || i18n.t('Unassigned area')} />
-                  <Detail
-                    label={i18n.t('Session')}
-                    value={session ? session.sessionCode : i18n.t('No open session')}
-                    helper={session ? `${i18n.t('Opened')} ${formatDateTime(session.openedAt)}` : i18n.t('No table session is currently open')}
-                  />
-                  <Detail
-                    label={i18n.t('Reservation')}
-                    value={reservation ? reservation.reservationCode : i18n.t('No active reservation')}
-                    helper={reservation ? `${reservation.customerName} • ${formatDateTime(reservation.reservationTime)}` : i18n.t('No reservation assigned')}
-                  />
+                {/* Key info - compact grid */}
+                <div className="mt-3 grid gap-2 grid-cols-2 text-xs">
+                  <div className="rounded-[16px] border border-ink/10 bg-cream/50 px-2 py-2">
+                    <p className="font-bold uppercase tracking-[0.16em] text-slate text-[10px]">{i18n.t('Seats')}</p>
+                    <p className="mt-1 font-semibold text-ink">{table.seatCount}</p>
+                  </div>
+                  <div className="rounded-[16px] border border-ink/10 bg-cream/50 px-2 py-2">
+                    <p className="font-bold uppercase tracking-[0.16em] text-slate text-[10px]">{i18n.t('Session')}</p>
+                    <p className="mt-1 font-semibold text-ink">{session ? session.sessionCode : '–'}</p>
+                  </div>
                 </div>
 
-                <div className="mt-4 border-t border-ink/10 pt-4">
-                  <p className="text-xs font-bold uppercase tracking-[0.22em] text-slate">{i18n.t('Next move')}</p>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {canSeatWalkIn ? (
-                      <button
-                        aria-label={i18n.t('Seat walk-in for {{code}}', { code: table.code })}
-                        className="button-chip-primary"
-                        disabled={isBusy}
-                        onClick={() => onSeatWalkIn?.(table)}
-                        type="button"
-                      >
-                        {isBusy && actionState?.kind === 'seat-walk-in' ? actionLabel : i18n.t('Seat walk-in')}
-                      </button>
-                    ) : null}
-
-                    {canOpenSession ? (
-                      <button
-                        aria-label={i18n.t('Open session for {{code}}', { code: table.code })}
-                        className="button-chip"
-                        disabled={isBusy}
-                        onClick={() => onOpenSession?.(table)}
-                        type="button"
-                      >
-                        {isBusy && actionState?.kind === 'open-session' ? actionLabel : i18n.t('Open session')}
-                      </button>
-                    ) : null}
-
-                    {session ? (
-                      <button
-                        aria-label={i18n.t('Open order flow for {{code}}', { code: table.code })}
-                        className="button-chip-primary"
-                        onClick={() => onJumpToOrder?.(session, table)}
-                        type="button"
-                      >
-                        {i18n.t('Open order flow')}
-                      </button>
-                    ) : null}
-
-                    {reservation ? (
-                      <button
-                        aria-label={i18n.t('Open reservation for {{code}}', { code: table.code })}
-                        className="button-chip"
-                        onClick={() => onJumpToReservation?.(reservation, table)}
-                        type="button"
-                      >
-                        {i18n.t('Open reservation')}
-                      </button>
-                    ) : null}
-
-                    {session ? (
-                      <button
-                        aria-label={i18n.t('Close session for {{code}}', { code: table.code })}
-                        className="button-chip"
-                        disabled={isBusy}
-                        onClick={() => onCloseSession?.(session, table)}
-                        type="button"
-                      >
-                        {isBusy && actionState?.kind === 'close-session' ? actionLabel : i18n.t('Close session')}
-                      </button>
-                    ) : null}
+                {/* Reservation pill - if exists */}
+                {reservation && (
+                  <div className="mt-3 rounded-[16px] border border-forest/15 bg-forest/5 px-3 py-2">
+                    <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate">
+                      {reservation.reservationCode} • {reservation.customerName}
+                    </p>
                   </div>
+                )}
+
+                {/* Actions - compact row */}
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {canSeatWalkIn ? (
+                    <button
+                      aria-label={i18n.t('Seat walk-in for {{code}}', { code: table.code })}
+                      className="button-chip-primary flex-1 text-xs"
+                      disabled={isBusy}
+                      onClick={() => onSeatWalkIn?.(table)}
+                      type="button"
+                    >
+                      {isBusy && actionState?.kind === 'seat-walk-in' ? i18n.t('Starting...') : i18n.t('Seat')}
+                    </button>
+                  ) : null}
+
+                  {canOpenSession ? (
+                    <button
+                      aria-label={i18n.t('Open session for {{code}}', { code: table.code })}
+                      className="button-chip text-xs"
+                      disabled={isBusy}
+                      onClick={() => onOpenSession?.(table)}
+                      type="button"
+                    >
+                      {isBusy && actionState?.kind === 'open-session' ? i18n.t('...') : i18n.t('Open')}
+                    </button>
+                  ) : null}
+
+                  {session ? (
+                    <button
+                      aria-label={i18n.t('Open order flow for {{code}}', { code: table.code })}
+                      className="button-chip-primary text-xs"
+                      onClick={() => onJumpToOrder?.(session, table)}
+                      type="button"
+                    >
+                      {i18n.t('Order')}
+                    </button>
+                  ) : null}
+
+                  {session ? (
+                    <button
+                      aria-label={i18n.t('Close session for {{code}}', { code: table.code })}
+                      className="button-chip text-xs"
+                      disabled={isBusy}
+                      onClick={() => onCloseSession?.(session, table)}
+                      type="button"
+                    >
+                      {isBusy && actionState?.kind === 'close-session' ? i18n.t('...') : i18n.t('Close')}
+                    </button>
+                  ) : null}
                 </div>
               </article>
             );
@@ -255,30 +241,6 @@ export function FloorOverview({
           {i18n.t('No tables match the current filters.')}
         </div>
       )}
-    </div>
-  );
-}
-
-function FloorMetric({ label, tone, value }: { label: string; tone: 'forest' | 'ember' | 'slate'; value: string }) {
-  const gradient =
-    tone === 'forest' ? 'from-forest to-forest/80' : tone === 'ember' ? 'from-ember to-ember/75' : 'from-slate to-slate/80';
-
-  return (
-    <div className={clsx('rounded-[24px] bg-gradient-to-br p-[1px]', gradient)}>
-      <div className="rounded-[23px] bg-white/90 px-4 py-3">
-        <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-slate">{label}</p>
-        <p className="mt-2 font-display text-3xl text-ink">{value}</p>
-      </div>
-    </div>
-  );
-}
-
-function Detail({ helper, label, value }: { helper?: string; label: string; value: string }) {
-  return (
-    <div className="rounded-[20px] border border-ink/10 bg-cream/60 px-4 py-3">
-      <p className="text-xs font-bold uppercase tracking-[0.22em] text-slate">{label}</p>
-      <p className="mt-2 text-sm font-semibold text-ink">{value}</p>
-      {helper ? <p className="mt-2 text-sm leading-6 text-slate">{helper}</p> : null}
     </div>
   );
 }
@@ -309,9 +271,16 @@ function tableStatusTone(status: TableStatus) {
   }
 }
 
-function formatDateTime(value: string) {
-  return new Intl.DateTimeFormat('vi-VN', {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  }).format(new Date(value));
+function KPILabel({ label, tone, value }: { label: string; tone: 'forest' | 'ember' | 'slate'; value: string }) {
+  const gradient =
+    tone === 'forest' ? 'from-forest to-forest/80' : tone === 'ember' ? 'from-ember to-ember/75' : 'from-slate to-slate/80';
+
+  return (
+    <div className={clsx('rounded-[24px] bg-gradient-to-br p-[1px]', gradient)}>
+      <div className="rounded-[23px] bg-white/90 px-4 py-3">
+        <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-slate">{label}</p>
+        <p className="mt-2 font-display text-3xl text-ink">{value}</p>
+      </div>
+    </div>
+  );
 }
