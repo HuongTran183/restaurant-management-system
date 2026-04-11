@@ -14,6 +14,7 @@ public record ReservationRequest(
         @Min(1) int partySize,
         @NotNull @Future Instant reservationTime,
         String requestedArea,
+        Long selectedTableId,
         String note
 ) {
 }

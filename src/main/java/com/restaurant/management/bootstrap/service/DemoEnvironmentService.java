@@ -108,6 +108,8 @@ public class DemoEnvironmentService {
         menuItem.setPrice(MENU_ITEM_PRICE);
         menuItem.setAvailable(true);
         menuItem.setActive(true);
+        menuItem.setFeatured(true);
+        menuItem.setPromotional(true);
         menuItem.setCategory(category);
         return menuItemRepository.save(menuItem);
     }

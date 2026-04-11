@@ -1,4 +1,10 @@
-@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Space+Grotesk:wght@400;500;700&display=swap');
+/* =============================================================================
+   RESTAURANT MANAGEMENT SYSTEM - DESIGN TOKENS & STYLES
+   ============================================================================= */
+
+/* Fonts - Unified sans-serif stack for easier reading */
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@100..700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -7,7 +13,7 @@
 @layer base {
   :root {
     color: #16211d;
-    font-family: 'Space Grotesk', 'Segoe UI', sans-serif;
+    font-family: 'Roboto', 'Segoe UI', Arial, sans-serif;
   }
 
   body {
@@ -32,42 +38,178 @@
   textarea {
     font: inherit;
   }
+
+  .material-symbols-outlined {
+    font-family: 'Material Symbols Outlined';
+    font-style: normal;
+    font-weight: normal;
+    line-height: 1;
+    letter-spacing: normal;
+    text-transform: none;
+    display: inline-block;
+    white-space: nowrap;
+    word-wrap: normal;
+    direction: ltr;
+    -webkit-font-smoothing: antialiased;
+    font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+  }
+
+  .material-symbols-outlined.fill-icon {
+    font-variation-settings: 'FILL' 1, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+  }
 }
 
 @layer components {
+  /* ==========================================================================
+     TYPOGRAPHY - Semantic text hierarchy
+     ========================================================================== */
+  .heading-1 {
+    @apply font-display text-4xl font-bold text-ink;
+  }
+  .heading-2 {
+    @apply text-xl font-semibold text-ink;
+  }
+  .heading-3 {
+    @apply text-lg font-semibold text-ink;
+  }
+  .heading-4 {
+    @apply text-base font-semibold text-ink;
+  }
+  .label-text {
+    @apply text-xs font-bold uppercase tracking-[0.24em] text-slate;
+  }
+  .body-text {
+    @apply text-sm text-slate;
+  }
+  .body-text-lg {
+    @apply text-base text-slate;
+  }
+
+  /* ==========================================================================
+     SPACING - Consistent spacing utilities
+     ========================================================================== */
+  .form-spacing {
+    @apply space-y-4;
+  }
+  .list-spacing {
+    @apply space-y-3;
+  }
+  .section-spacing {
+    @apply space-y-6;
+  }
+  .panel-padding {
+    @apply px-6 py-8;
+  }
+  .grid-gap {
+    @apply gap-4;
+  }
+
+  /* ==========================================================================
+     PANELS & CONTAINERS
+     ========================================================================== */
   .panel {
-    @apply rounded-[34px] border border-ink/10 bg-white/55 shadow-float backdrop-blur;
+    @apply rounded-lg border border-ink/10 bg-white shadow-[0_18px_40px_-32px_rgba(22,33,29,0.28)];
+  }
+  .panel-solid {
+    @apply rounded-lg border border-ink/10 bg-white shadow-[0_18px_40px_-32px_rgba(22,33,29,0.22)];
+  }
+  .card {
+    @apply rounded-lg border border-ink/10 bg-white p-4 shadow-[0_14px_30px_-28px_rgba(22,33,29,0.25)];
   }
 
+  /* ==========================================================================
+     FORM FIELDS
+     ========================================================================== */
   .field {
-    @apply w-full rounded-[18px] border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none transition placeholder:text-slate/60 focus:border-forest/35 focus:ring-4 focus:ring-forest/10;
+    @apply w-full rounded-md border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none transition placeholder:text-slate/60 focus:border-forest/25 focus:ring-2 focus:ring-forest/10;
+  }
+  /* Unified dish-field to use system colors instead of hardcoded */
+  .dish-field {
+    @apply w-full rounded-md border border-ink/10 bg-white px-4 py-3 text-sm font-medium text-ink outline-none transition focus:border-forest/25 focus:ring-2 focus:ring-forest/10;
+  }
+  .field-error {
+    @apply border-ember/35 focus:border-ember/35 focus:ring-2 focus:ring-ember/10;
+  }
+  .textarea-field {
+    @apply field min-h-[100px] resize-y;
   }
 
+  /* ==========================================================================
+     BUTTONS - All variants
+     ========================================================================== */
   .button-primary {
-    @apply inline-flex items-center gap-2 rounded-full bg-forest px-5 py-3 text-sm font-semibold text-cream transition hover:-translate-y-0.5 hover:bg-ink disabled:cursor-not-allowed disabled:opacity-60;
+    @apply inline-flex items-center justify-center gap-2 rounded-md bg-forest px-5 py-3 text-sm font-semibold text-cream transition hover:bg-ink disabled:cursor-not-allowed disabled:opacity-60;
   }
-
   .button-secondary {
-    @apply inline-flex items-center gap-2 rounded-full border border-ink/10 bg-white/75 px-5 py-3 text-sm font-semibold text-ink transition hover:-translate-y-0.5 hover:border-forest/25 hover:text-forest;
+    @apply inline-flex items-center justify-center gap-2 rounded-md border border-ink/10 bg-white px-5 py-3 text-sm font-semibold text-ink transition hover:border-forest/15 hover:text-forest disabled:cursor-not-allowed disabled:opacity-60;
   }
-
+  .button-danger {
+    @apply inline-flex items-center justify-center gap-2 rounded-md bg-ember px-5 py-3 text-sm font-semibold text-cream transition hover:bg-ember/85 disabled:cursor-not-allowed disabled:opacity-60;
+  }
+  .button-ghost {
+    @apply inline-flex items-center justify-center gap-2 rounded-md px-5 py-3 text-sm font-semibold text-ink transition hover:bg-ink/5;
+  }
+  .button-link {
+    @apply inline-flex items-center gap-1 text-sm font-semibold text-forest underline-offset-2 transition hover:underline;
+  }
   .button-chip {
-    @apply inline-flex items-center gap-2 rounded-full border border-ink/10 bg-white/80 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-ink transition hover:-translate-y-0.5 hover:border-forest/25 hover:text-forest disabled:cursor-not-allowed disabled:opacity-50;
+    @apply inline-flex items-center gap-2 rounded-md border border-ink/10 bg-white px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-ink transition hover:border-forest/15 hover:text-forest disabled:cursor-not-allowed disabled:opacity-50;
   }
-
   .button-chip-primary {
-    @apply inline-flex items-center gap-2 rounded-full bg-forest px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-cream transition hover:-translate-y-0.5 hover:bg-ink disabled:cursor-not-allowed disabled:opacity-50;
+    @apply inline-flex items-center gap-2 rounded-md bg-forest px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-cream transition hover:bg-ink disabled:cursor-not-allowed disabled:opacity-50;
   }
-
+  .button-chip-danger {
+    @apply inline-flex items-center gap-2 rounded-md bg-ember px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-cream transition hover:bg-ember/85 disabled:cursor-not-allowed disabled:opacity-50;
+  }
   .button-ghost-light {
-    @apply inline-flex items-center justify-center rounded-full border border-white/20 bg-white/10 px-4 py-3 text-sm font-semibold text-cream transition hover:bg-white/20;
+    @apply inline-flex items-center justify-center rounded-md border border-ink/10 bg-white px-4 py-3 text-sm font-semibold text-ink transition hover:border-forest/15 hover:text-forest;
   }
-
+  .button-icon {
+    @apply inline-flex items-center justify-center rounded-full p-2 transition hover:bg-ink/5;
+  }
+  .button-icon-sm {
+    @apply inline-flex items-center justify-center rounded-full p-1.5 transition hover:bg-ink/5;
+  }
   .counter-button {
-    @apply h-9 w-9 rounded-full border border-ink/10 bg-white text-lg font-semibold text-forest transition hover:border-forest/25 hover:bg-forest/5;
+    @apply h-9 w-9 rounded-md border border-ink/10 bg-white text-lg font-semibold text-forest transition hover:bg-forest/5;
   }
 
+  /* ==========================================================================
+     DATA DISPLAY
+     ========================================================================== */
   .data-row {
-    @apply flex items-center justify-between gap-4 rounded-[22px] border border-ink/10 bg-white/75 px-4 py-4;
+    @apply flex items-center justify-between gap-4 rounded-md border border-ink/10 bg-white px-4 py-4;
+  }
+  .data-row-clickable {
+    @apply data-row cursor-pointer transition hover:bg-white;
+  }
+
+  /* ==========================================================================
+     STATUS BADGES
+     ========================================================================== */
+  .badge {
+    @apply inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold;
+  }
+  .badge-success {
+    @apply badge bg-forest/10 text-forest;
+  }
+  .badge-warning {
+    @apply badge bg-sun/20 text-ink;
+  }
+  .badge-danger {
+    @apply badge bg-ember/10 text-ember;
+  }
+  .badge-neutral {
+    @apply badge bg-slate/10 text-slate;
+  }
+
+  /* ==========================================================================
+     EMPTY & LOADING STATES
+     ========================================================================== */
+  .empty-state {
+    @apply flex flex-col items-center justify-center gap-4 py-12 text-center text-slate;
+  }
+  .loading-spinner {
+    @apply h-8 w-8 animate-spin rounded-full border-4 border-ink/10 border-t-forest;
   }
 }

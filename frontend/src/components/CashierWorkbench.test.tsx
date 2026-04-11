@@ -13,9 +13,13 @@ function makeMenuItem(overrides: Partial<MenuItem> = {}): MenuItem {
     price: 14,
     available: true,
     active: true,
+    featured: false,
+    promotional: false,
     categoryId: 7,
     categoryName: 'Noodles',
     images: [],
+    createdAt: '2026-03-18T10:00:00.000Z',
+    updatedAt: '2026-03-18T10:00:00.000Z',
     ...overrides,
   };
 }

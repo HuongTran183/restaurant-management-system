@@ -29,13 +29,17 @@ export type Category = {
   description: string | null;
   sortOrder: number;
   active: boolean;
+  createdAt: string;
+  updatedAt: string;
 };
 
 export type MenuItemImage = {
   id: number;
+  filename: string;
+  path: string;
+  contentType: string | null;
+  primaryImage: boolean;
   imageUrl: string;
-  altText: string | null;
-  primary: boolean;
 };
 
 export type MenuItem = {
@@ -46,9 +50,39 @@ export type MenuItem = {
   price: number;
   available: boolean;
   active: boolean;
+  featured: boolean;
+  promotional: boolean;
   categoryId: number;
   categoryName: string;
   images: MenuItemImage[];
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type StaffMenuItemImage = {
+  id: number;
+  filename: string;
+  path: string;
+  contentType: string | null;
+  primaryImage: boolean;
+  imageUrl: string;
+};
+
+export type StaffMenuItem = {
+  id: number;
+  code: string;
+  name: string;
+  description: string | null;
+  price: number;
+  available: boolean;
+  active: boolean;
+  featured: boolean;
+  promotional: boolean;
+  categoryId: number;
+  categoryName: string;
+  images: StaffMenuItemImage[];
+  createdAt: string;
+  updatedAt: string;
 };
 
 export type TableStatus = 'AVAILABLE' | 'OCCUPIED' | 'RESERVED' | 'CLEANING' | 'LOCKED';
@@ -173,7 +207,7 @@ export type DashboardData = {
 export type ReservationStatus = 'PENDING' | 'CONFIRMED' | 'CHECKED_IN' | 'COMPLETED' | 'CANCELLED';
 export type ServiceRequestStatus = 'OPEN' | 'RESOLVED' | 'CANCELLED';
 export type ServiceRequestType = 'CALL_WAITER' | 'REQUEST_BILL' | 'WATER' | 'OTHER';
-export type PaymentStatus = 'COMPLETED' | 'FAILED' | 'PENDING' | 'CANCELLED';
+export type PaymentStatus = 'COMPLETED' | 'FAILED' | 'REFUNDED' | 'PENDING' | 'CANCELLED';
 export type PaymentMethod = 'CASH' | 'CARD' | 'BANK_TRANSFER' | 'E_WALLET';
 
 export type DiningTable = {
@@ -185,6 +219,39 @@ export type DiningTable = {
   active: boolean;
   areaId: number | null;
   areaName: string;
+};
+
+export type PublicBookingTable = {
+  id: number;
+  code: string;
+  name: string;
+  seatCount: number;
+  areaId: number;
+  areaName: string;
+  bookingStatus: 'AVAILABLE' | 'BOOKED';
+  selectable: boolean;
+};
+
+export type PublicBookingArea = {
+  id: number;
+  code: string;
+  name: string;
+  description: string | null;
+  totalTables: number;
+  availableTables: number;
+  bookedTables: number;
+  tables: PublicBookingTable[];
+};
+
+export type PublicBookingOptions = {
+  reservationTime: string;
+  partySize: number;
+  areas: PublicBookingArea[];
+};
+
+export type PublicReservationSearchResult = {
+  matchMode: 'CODE' | 'PHONE';
+  reservations: Reservation[];
 };
 
 export type TableSession = {
@@ -218,6 +285,11 @@ function buildQueryString(params: Record<string, QueryValue>): string {
 // In dev (including e2e), ALWAYS prefer relative `/api` calls so Vite proxy can avoid CORS issues.
 // In production, fall back to a real backend URL.
 const API_BASE_URL = (import.meta.env.DEV ? '' : import.meta.env.VITE_API_BASE_URL ?? 'http://127.0.0.1:18080').replace(/\/$/, '');
+const DEV_BACKEND_TARGET = (
+  import.meta.env.VITE_API_PROXY_TARGET
+  ?? import.meta.env.VITE_API_BASE_URL
+  ?? `http://127.0.0.1:${import.meta.env.APP_BACKEND_PORT ?? '18080'}`
+).replace(/\/$/, '');
 
 class ApiError extends Error {
   status: number;
@@ -236,7 +308,7 @@ async function request<T>(
 ): Promise<T> {
   const { timeoutMs = 15_000, ...fetchInit } = init;
   const headers = new Headers(fetchInit.headers);
-  if (!headers.has('Content-Type') && fetchInit.body) {
+  if (!headers.has('Content-Type') && fetchInit.body && !(fetchInit.body instanceof FormData)) {
     headers.set('Content-Type', 'application/json');
   }
   if (token) {
@@ -268,6 +340,12 @@ async function request<T>(
     if (error instanceof DOMException && error.name === 'AbortError') {
       throw new ApiError(`Request timed out after ${timeoutMs}ms`, 504);
     }
+    if (error instanceof TypeError) {
+      const hint = import.meta.env.DEV
+        ? `Khong ket noi duoc toi backend tai ${DEV_BACKEND_TARGET}. Hay khoi dong backend hoac dong bo APP_BACKEND_PORT/VITE_API_PROXY_TARGET.`
+        : 'Khong ket noi duoc toi may chu backend.';
+      throw new ApiError(hint, 503);
+    }
     throw error;
   } finally {
     window.clearTimeout(timeoutId);
@@ -275,7 +353,25 @@ async function request<T>(
 }
 
 export const publicApi = {
-  menu: () => request<PublicMenu>('/api/public/menu'),
+  lookupReservation: (payload: { query: string }) =>
+    request<PublicReservationSearchResult>('/api/public/reservations/lookup', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  menuItem: (menuItemId: number) => request<MenuItem>(`/api/public/menu/items/${menuItemId}`),
+  bookingOptions: (params: { reservationTime: string; partySize: number }) =>
+    request<PublicBookingOptions>(
+      `/api/public/reservations/options${buildQueryString({
+        reservationTime: params.reservationTime,
+        partySize: params.partySize,
+      })}`,
+    ),
+  menu: (params: { includeUnavailable?: boolean } = {}) =>
+    request<PublicMenu>(
+      `/api/public/menu${buildQueryString({
+        includeUnavailable: params.includeUnavailable,
+      })}`,
+    ),
   qrTable: (token: string) => request<QrTable>(`/api/public/qr/${token}`),
   submitQrOrder: (token: string, payload: { note: string; items: Array<{ menuItemId: number; quantity: number; note?: string }> }) =>
     request<Order>(`/api/public/qr/${token}/orders`, {
@@ -295,6 +391,7 @@ export const publicApi = {
     partySize: number;
     reservationTime: string;
     requestedArea?: string;
+    selectedTableId?: number;
     note?: string;
   }) =>
     request<Reservation>('/api/public/reservations', {
@@ -302,6 +399,11 @@ export const publicApi = {
       body: JSON.stringify(payload),
     }),
   getReservation: (code: string) => request<Reservation>(`/api/public/reservations/${code}`),
+  rescheduleReservation: (code: string, payload: { phone: string; reservationTime: string }) =>
+    request<Reservation>(`/api/public/reservations/${code}/reschedule`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
   cancelReservation: (code: string, note: string) =>
     request<Reservation>(`/api/public/reservations/${code}/cancel`, {
       method: 'POST',
@@ -321,6 +423,16 @@ export const authApi = {
       body: JSON.stringify({ refreshToken }),
     }),
   me: (token: string) => request<UserProfile>('/api/auth/me', {}, token),
+  registerCustomer: (payload: { username: string; password: string; fullName: string; email: string; phone?: string }) =>
+    request<AuthSession>('/api/public/auth/register/customer', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  registerStaff: (payload: { username: string; password: string; fullName: string; email: string; role: string }) =>
+    request<UserProfile>('/api/public/auth/register/staff', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
 };
 
 function emptyPageResponse<T>(): PageResponse<T> {
@@ -402,6 +514,239 @@ export const staffApi = {
         query: params.query,
       })}`,
       {},
+      token,
+    ),
+  categories: (
+    token: string,
+    params: { page?: number; size?: number; sort?: string } = {},
+  ) =>
+    request<PageResponse<Category>>(
+      `/api/categories${buildQueryString({
+        page: params.page ?? 0,
+        size: params.size ?? 20,
+        sort: params.sort ?? 'createdAt',
+      })}`,
+      {},
+      token,
+    ),
+  menuItems: (
+    token: string,
+    params: { page?: number; size?: number; sort?: string } = {},
+  ) =>
+    request<PageResponse<StaffMenuItem>>(
+      `/api/menu-items${buildQueryString({
+        page: params.page ?? 0,
+        size: params.size ?? 20,
+        sort: params.sort ?? 'createdAt',
+      })}`,
+      {},
+      token,
+    ),
+  createMenuItem: (
+    token: string,
+    payload: {
+      code: string;
+      name: string;
+      description?: string;
+      price: number;
+      available: boolean;
+      active: boolean;
+      featured: boolean;
+      promotional: boolean;
+      categoryId: number;
+    },
+  ) =>
+    request<StaffMenuItem>(
+      '/api/menu-items',
+      {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      },
+      token,
+    ),
+  updateMenuItem: (
+    token: string,
+    menuItemId: number,
+    payload: {
+      code: string;
+      name: string;
+      description?: string;
+      price: number;
+      available: boolean;
+      active: boolean;
+      featured: boolean;
+      promotional: boolean;
+      categoryId: number;
+    },
+  ) =>
+    request<StaffMenuItem>(
+      `/api/menu-items/${menuItemId}`,
+      {
+        method: 'PUT',
+        body: JSON.stringify(payload),
+      },
+      token,
+    ),
+  uploadMenuItemImage: (token: string, menuItemId: number, file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return request<StaffMenuItemImage>(
+      `/api/menu-items/${menuItemId}/images`,
+      {
+        method: 'POST',
+        body: formData,
+      },
+      token,
+    );
+  },
+  createCategory: (
+    token: string,
+    payload: { code: string; name: string; description?: string; sortOrder: number; active: boolean },
+  ) =>
+    request<Category>(
+      '/api/categories',
+      {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      },
+      token,
+    ),
+  updateCategory: (
+    token: string,
+    categoryId: number,
+    payload: { code: string; name: string; description?: string; sortOrder: number; active: boolean },
+  ) =>
+    request<Category>(
+      `/api/categories/${categoryId}`,
+      {
+        method: 'PUT',
+        body: JSON.stringify(payload),
+      },
+      token,
+    ),
+  areas: (
+    token: string,
+    params: { page?: number; size?: number; query?: string } = {},
+  ) =>
+    request<PageResponse<{ id: number; code: string; name: string; description: string | null; active: boolean; createdAt: string; updatedAt: string }>>(
+      `/api/areas${buildQueryString({
+        page: params.page ?? 0,
+        size: params.size ?? 20,
+        query: params.query,
+      })}`,
+      {},
+      token,
+    ),
+  createArea: (
+    token: string,
+    payload: { code: string; name: string; description?: string; active: boolean },
+  ) =>
+    request<{ id: number; code: string; name: string; description: string | null; active: boolean; createdAt: string; updatedAt: string }>(
+      '/api/areas',
+      {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      },
+      token,
+    ),
+  updateArea: (
+    token: string,
+    areaId: number,
+    payload: { code: string; name: string; description?: string; active: boolean },
+  ) =>
+    request<{ id: number; code: string; name: string; description: string | null; active: boolean; createdAt: string; updatedAt: string }>(
+      `/api/areas/${areaId}`,
+      {
+        method: 'PUT',
+        body: JSON.stringify(payload),
+      },
+      token,
+    ),
+  createTable: (
+    token: string,
+    payload: { code: string; name: string; seatCount: number; areaId: number; status: TableStatus; active: boolean },
+  ) =>
+    request<DiningTable>(
+      '/api/tables',
+      {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      },
+      token,
+    ),
+  updateTable: (
+    token: string,
+    tableId: number,
+    payload: { code: string; name: string; seatCount: number; areaId: number; status: TableStatus; active: boolean },
+  ) =>
+    request<DiningTable>(
+      `/api/tables/${tableId}`,
+      {
+        method: 'PUT',
+        body: JSON.stringify(payload),
+      },
+      token,
+    ),
+  users: (token: string, params: { page: number; size: number }) =>
+    request<PageResponse<UserProfile>>(
+      `/api/users?page=${params.page}&size=${params.size}`,
+      {},
+      token,
+    ),
+  createUser: (
+    token: string,
+    payload: { username: string; password: string; fullName: string; email: string; active: boolean; roles: string[] },
+  ) =>
+    request<UserProfile>(
+      '/api/users',
+      {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      },
+      token,
+    ),
+  updateUser: (
+    token: string,
+    userId: number,
+    payload: { username: string; password?: string; fullName: string; email: string; active: boolean; roles: string[] },
+  ) =>
+    request<UserProfile>(
+      `/api/users/${userId}`,
+      {
+        method: 'PUT',
+        body: JSON.stringify(payload),
+      },
+      token,
+    ),
+  customers: (token: string, params: { page: number; size: number; query?: string; active?: boolean }) =>
+    request<PageResponse<{ id: number; code: string; fullName: string; phone: string; email: string; active: boolean }>>(
+      `/api/customers?page=${params.page}&size=${params.size}${params.query ? `&query=${encodeURIComponent(params.query)}` : ''}${params.active !== undefined ? `&active=${params.active}` : ''}`,
+      {},
+      token,
+    ),
+  createCustomer: (
+    token: string,
+    payload: { fullName: string; phone: string; email: string; active: boolean },
+  ) =>
+    request<{ id: number; code: string; fullName: string; phone: string; email: string; active: boolean }>(
+      '/api/customers',
+      {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      },
+      token,
+    ),
+  updateCustomer: (
+    token: string,
+    customerId: number,
+    payload: { fullName: string; phone: string; email: string; active: boolean },
+  ) =>
+    request<{ id: number; code: string; fullName: string; phone: string; email: string; active: boolean }>(
+      `/api/customers/${customerId}`,
+      {
+        method: 'PUT',
+        body: JSON.stringify(payload),
+      },
       token,
     ),
   confirmOrder: (token: string, orderId: number) =>
