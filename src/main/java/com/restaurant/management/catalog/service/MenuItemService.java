@@ -66,7 +66,14 @@ public class MenuItemService {
 
     @Transactional(readOnly = true)
     public List<MenuItemResponse> listActive() {
-        List<MenuItem> items = menuItemRepository.findAllByActiveTrueAndAvailableTrueAndCategoryActiveTrueOrderByCategorySortOrderAscNameAsc();
+        return listPublic(false);
+    }
+
+    @Transactional(readOnly = true)
+    public List<MenuItemResponse> listPublic(boolean includeUnavailable) {
+        List<MenuItem> items = includeUnavailable
+                ? menuItemRepository.findAllByActiveTrueAndCategoryActiveTrueOrderByCategorySortOrderAscNameAsc()
+                : menuItemRepository.findAllByActiveTrueAndAvailableTrueAndCategoryActiveTrueOrderByCategorySortOrderAscNameAsc();
         Map<Long, List<MenuItemImageResponse>> imagesByMenuItemId = loadImagesByMenuItemIds(
                 items.stream().map(MenuItem::getId).toList()
         );
@@ -82,6 +89,17 @@ public class MenuItemService {
     @Transactional(readOnly = true)
     public MenuItemResponse get(Long menuItemId) {
         MenuItem menuItem = findMenuItem(menuItemId);
+        List<MenuItemImageResponse> images = loadImagesByMenuItemIds(List.of(menuItemId))
+                .getOrDefault(menuItemId, List.of());
+        return toResponse(menuItem, images);
+    }
+
+    @Transactional(readOnly = true)
+    public MenuItemResponse getPublic(Long menuItemId) {
+        MenuItem menuItem = findMenuItem(menuItemId);
+        if (!menuItem.isActive() || !menuItem.getCategory().isActive()) {
+            throw new ResourceNotFoundException("Menu item not found: " + menuItemId);
+        }
         List<MenuItemImageResponse> images = loadImagesByMenuItemIds(List.of(menuItemId))
                 .getOrDefault(menuItemId, List.of());
         return toResponse(menuItem, images);
@@ -129,6 +147,22 @@ public class MenuItemService {
                 .orElseThrow(() -> new ResourceNotFoundException("Menu item not found: " + menuItemId));
     }
 
+    @Transactional(readOnly = true)
+    public MenuItemImageAsset getPublicImage(Long imageId) {
+        MenuItemImage image = menuItemImageRepository.findById(imageId)
+                .orElseThrow(() -> new ResourceNotFoundException("Menu item image not found: " + imageId));
+        MenuItem menuItem = image.getMenuItem();
+        if (!menuItem.isActive() || !menuItem.getCategory().isActive()) {
+            throw new ResourceNotFoundException("Menu item image not found: " + imageId);
+        }
+
+        return new MenuItemImageAsset(
+                image.getFilename(),
+                image.getContentType(),
+                localFileStorage.readBytes(image.getPath())
+        );
+    }
+
     private void applyRequest(MenuItem menuItem, MenuItemRequest request) {
         menuItem.setCode(request.code());
         menuItem.setName(request.name());
@@ -136,6 +170,8 @@ public class MenuItemService {
         menuItem.setPrice(request.price());
         menuItem.setAvailable(request.available());
         menuItem.setActive(request.active());
+        menuItem.setFeatured(resolveOptionalFlag(request.featured(), menuItem.isFeatured()));
+        menuItem.setPromotional(resolveOptionalFlag(request.promotional(), menuItem.isPromotional()));
         menuItem.setCategory(categoryService.findCategory(request.categoryId()));
     }
 
@@ -161,6 +197,8 @@ public class MenuItemService {
                 menuItem.getPrice(),
                 menuItem.isAvailable(),
                 menuItem.isActive(),
+                menuItem.isFeatured(),
+                menuItem.isPromotional(),
                 menuItem.getCategory().getId(),
                 menuItem.getCategory().getName(),
                 images,
@@ -175,7 +213,19 @@ public class MenuItemService {
                 image.getFilename(),
                 image.getPath(),
                 image.getContentType(),
-                image.isPrimaryImage()
+                image.isPrimaryImage(),
+                "/api/public/menu/images/" + image.getId()
         );
+    }
+
+    public record MenuItemImageAsset(
+            String filename,
+            String contentType,
+            byte[] content
+    ) {
+    }
+
+    private boolean resolveOptionalFlag(Boolean requestedValue, boolean currentValue) {
+        return requestedValue != null ? requestedValue : currentValue;
     }
 }

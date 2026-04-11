@@ -5,13 +5,23 @@ import { Link, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { authApi, type AuthSession } from './lib/api';
 import { LanguageSwitcher } from './components/LanguageSwitcher';
 import { clearSession, msUntilSessionRefresh, readSession, saveSession, shouldRefreshSession } from './lib/session';
+import { AreaManagementPage } from './pages/AreaManagementPage';
 import { CategoryManagementPage } from './pages/CategoryManagementPage';
+import { CustomerLoginPage } from './pages/CustomerLoginPage';
+import { CustomerManagementPage } from './pages/CustomerManagementPage';
+import { CustomerRegisterPage } from './pages/CustomerRegisterPage';
 import { HomePage } from './pages/HomePage';
+import { MenuPage } from './pages/MenuPage';
+import { DishDetailPage } from './pages/DishDetailPage';
 import { MenuItemManagementPage } from './pages/MenuItemManagementPage';
 import { QrExperiencePage } from './pages/QrExperiencePage';
+import { ReservationManagementPage } from './pages/ReservationManagementPage';
 import { ReservationPage } from './pages/ReservationPage';
 import { StaffDashboardPage } from './pages/StaffDashboardPage';
 import { StaffLoginPage } from './pages/StaffLoginPage';
+import { StaffRegistrationPage } from './pages/StaffRegistrationPage';
+import { TableManagementPage } from './pages/TableManagementPage';
+import { UserManagementPage } from './pages/UserManagementPage';
 
 const initialSession = typeof window === 'undefined' ? null : readSession();
 
@@ -92,14 +102,68 @@ export default function App() {
   const appRoutes = (
     <Routes>
       <Route path="/" element={<HomePage />} />
+      <Route path="/menu" element={<MenuPage />} />
+      <Route path="/menu/items/:menuItemId" element={<DishDetailPage />} />
+      <Route path="/login" element={<CustomerLoginPage onSignedIn={updateSession} session={session} isSessionReady={isSessionReady} />} />
+      <Route path="/register" element={<CustomerRegisterPage onSignedIn={updateSession} session={session} isSessionReady={isSessionReady} />} />
       <Route path="/book" element={<ReservationPage />} />
+      <Route path="/book/manage" element={<ReservationManagementPage />} />
       <Route path="/qr/:token" element={<QrExperiencePage />} />
       <Route path="/staff/login" element={<StaffLoginPage onSignedIn={updateSession} session={session} isSessionReady={isSessionReady} />} />
+      <Route path="/staff/register" element={<StaffRegistrationPage session={session} isSessionReady={isSessionReady} />} />
       <Route
         path="/staff"
         element={
           <ProtectedRoute session={session} isSessionReady={isSessionReady}>
             <StaffDashboardPage
+              session={session}
+              onLogout={() => updateSession(null)}
+              onRefreshSession={refreshCurrentSession}
+            />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/staff/areas"
+        element={
+          <ProtectedRoute session={session} isSessionReady={isSessionReady}>
+            <AreaManagementPage
+              session={session}
+              onLogout={() => updateSession(null)}
+              onRefreshSession={refreshCurrentSession}
+            />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/staff/tables"
+        element={
+          <ProtectedRoute session={session} isSessionReady={isSessionReady}>
+            <TableManagementPage
+              session={session}
+              onLogout={() => updateSession(null)}
+              onRefreshSession={refreshCurrentSession}
+            />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/staff/users"
+        element={
+          <ProtectedRoute session={session} isSessionReady={isSessionReady}>
+            <UserManagementPage
+              session={session}
+              onLogout={() => updateSession(null)}
+              onRefreshSession={refreshCurrentSession}
+            />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/staff/customers"
+        element={
+          <ProtectedRoute session={session} isSessionReady={isSessionReady}>
+            <CustomerManagementPage
               session={session}
               onLogout={() => updateSession(null)}
               onRefreshSession={refreshCurrentSession}
@@ -135,7 +199,7 @@ export default function App() {
     </Routes>
   );
 
-  const isStandaloneRoute = location.pathname.startsWith('/staff/categories') || location.pathname.startsWith('/staff/menu-items');
+  const isStandaloneRoute = location.pathname.startsWith('/book/manage') || location.pathname.startsWith('/menu/items/') || location.pathname.startsWith('/staff/categories') || location.pathname.startsWith('/staff/menu-items') || location.pathname.startsWith('/staff/areas') || location.pathname.startsWith('/staff/tables') || location.pathname.startsWith('/staff/users') || location.pathname.startsWith('/staff/customers');
   if (isStandaloneRoute) {
     return appRoutes;
   }
@@ -156,11 +220,29 @@ export default function App() {
 
           <div className="flex items-center gap-4">
             <nav className="hidden items-center gap-2 md:flex">
-              <TopNavLink to="/">{t('Menu')}</TopNavLink>
+              <TopNavLink to="/menu">{t('Menu')}</TopNavLink>
               <TopNavLink to="/book">{t('Reservations')}</TopNavLink>
-              <TopNavLink to="/staff">{t('STAFF')}</TopNavLink>
-              <TopNavLink to="/staff/categories">{t('Menu Designer')}</TopNavLink>
-              <TopNavLink to="/staff/menu-items">{t('Dish Mastery')}</TopNavLink>
+              {session ? (
+                <>
+                  {session.user.roles.includes('CUSTOMER') ? (
+                    <button
+                      onClick={() => updateSession(null)}
+                      className="rounded-full px-4 py-2 text-sm font-medium text-slate transition hover:bg-white/80 hover:text-forest"
+                    >
+                      {t('Logout')} ({session.user.fullName})
+                    </button>
+                  ) : (
+                    <TopNavLink to="/staff">{t('Dashboard')}</TopNavLink>
+                  )}
+                </>
+              ) : (
+                <>
+                  <TopNavLink to="/login">{t('Login')}</TopNavLink>
+                  <Link to="/register" className="button-primary text-sm">
+                    {t('Sign Up')}
+                  </Link>
+                </>
+              )}
             </nav>
             <LanguageSwitcher />
           </div>
@@ -184,7 +266,7 @@ function ProtectedRoute({
   session: AuthSession | null;
 }) {
   if (!isSessionReady) {
-    return <div className="panel px-6 py-8">Refreshing session…</div>;
+    return <div className="panel px-6 py-8">Đang làm mới phiên…</div>;
   }
 
   if (!session) {

@@ -12,6 +12,8 @@ public record MenuItemRequest(
         @NotNull @DecimalMin("0.00") BigDecimal price,
         boolean available,
         boolean active,
+        Boolean featured,
+        Boolean promotional,
         @NotNull Long categoryId
 ) {
 }

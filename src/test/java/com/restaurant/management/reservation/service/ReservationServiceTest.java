@@ -9,6 +9,8 @@ import static org.mockito.Mockito.when;
 import com.restaurant.management.floor.domain.DiningTable;
 import com.restaurant.management.floor.domain.TableSessionStatus;
 import com.restaurant.management.floor.domain.TableStatus;
+import com.restaurant.management.floor.repository.AreaRepository;
+import com.restaurant.management.floor.repository.DiningTableRepository;
 import com.restaurant.management.floor.repository.TableSessionRepository;
 import com.restaurant.management.floor.service.DiningTableService;
 import com.restaurant.management.reservation.domain.Reservation;
@@ -30,12 +32,16 @@ class ReservationServiceTest {
         ReservationHistoryRepository reservationHistoryRepository = mock(ReservationHistoryRepository.class);
         DiningTableService diningTableService = mock(DiningTableService.class);
         TableSessionRepository tableSessionRepository = mock(TableSessionRepository.class);
+        AreaRepository areaRepository = mock(AreaRepository.class);
+        DiningTableRepository diningTableRepository = mock(DiningTableRepository.class);
 
         ReservationService service = new ReservationService(
                 reservationRepository,
                 reservationHistoryRepository,
                 diningTableService,
-                tableSessionRepository
+                tableSessionRepository,
+                areaRepository,
+                diningTableRepository
         );
 
         Reservation reservation = new Reservation();
@@ -77,12 +83,16 @@ class ReservationServiceTest {
         ReservationHistoryRepository reservationHistoryRepository = mock(ReservationHistoryRepository.class);
         DiningTableService diningTableService = mock(DiningTableService.class);
         TableSessionRepository tableSessionRepository = mock(TableSessionRepository.class);
+        AreaRepository areaRepository = mock(AreaRepository.class);
+        DiningTableRepository diningTableRepository = mock(DiningTableRepository.class);
 
         ReservationService service = new ReservationService(
                 reservationRepository,
                 reservationHistoryRepository,
                 diningTableService,
-                tableSessionRepository
+                tableSessionRepository,
+                areaRepository,
+                diningTableRepository
         );
 
         DiningTable diningTable = new DiningTable();

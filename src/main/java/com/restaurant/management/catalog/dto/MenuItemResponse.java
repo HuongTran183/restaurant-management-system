@@ -12,6 +12,8 @@ public record MenuItemResponse(
         BigDecimal price,
         boolean available,
         boolean active,
+        boolean featured,
+        boolean promotional,
         Long categoryId,
         String categoryName,
         List<MenuItemImageResponse> images,

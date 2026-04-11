@@ -5,6 +5,7 @@ public record MenuItemImageResponse(
         String filename,
         String path,
         String contentType,
-        boolean primaryImage
+        boolean primaryImage,
+        String imageUrl
 ) {
 }

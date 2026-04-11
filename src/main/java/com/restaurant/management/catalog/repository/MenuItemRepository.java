@@ -12,4 +12,7 @@ public interface MenuItemRepository extends JpaRepository<MenuItem, Long> {
 
     @EntityGraph(attributePaths = "category")
     List<MenuItem> findAllByActiveTrueAndAvailableTrueAndCategoryActiveTrueOrderByCategorySortOrderAscNameAsc();
+
+    @EntityGraph(attributePaths = "category")
+    List<MenuItem> findAllByActiveTrueAndCategoryActiveTrueOrderByCategorySortOrderAscNameAsc();
 }
