@@ -1,0 +1,1725 @@
+{
+  "info": {
+    "_postman_id": "51b6aa7e-860e-4d9f-80e3-fec1b5140104",
+    "name": "Restaurant Management System API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Full API coverage for current Spring controllers (public, auth, staff, billing, dev support)."
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{accessToken}}",
+        "type": "string"
+      }
+    ]
+  },
+  "item": [
+    {
+      "name": "00 Health",
+      "item": [
+        {
+          "name": "GET /actuator/health",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/actuator/health",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "01 Auth & Identity",
+      "item": [
+        {
+          "name": "POST /api/auth/login",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{adminUsername}}\",\n  \"password\": \"{{adminPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', function () { pm.response.to.have.status(200); });",
+                  "var d = pm.response.json();",
+                  "pm.environment.set('accessToken', d.accessToken);",
+                  "pm.environment.set('refreshToken', d.refreshToken);",
+                  "if (d.user && d.user.id) pm.environment.set('currentUserId', String(d.user.id));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /api/auth/refresh",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/auth/refresh",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', function () { pm.response.to.have.status(200); });",
+                  "var d = pm.response.json();",
+                  "pm.environment.set('accessToken', d.accessToken);",
+                  "pm.environment.set('refreshToken', d.refreshToken);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /api/auth/me",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/auth/me"
+          }
+        },
+        {
+          "name": "POST /api/auth/logout",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/auth/logout",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Logout status', function () { pm.expect([200,204]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /api/public/auth/register/customer",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/public/auth/register/customer",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{customerRegUsername}}\",\n  \"password\": \"{{customerRegPassword}}\",\n  \"fullName\": \"{{customerRegFullName}}\",\n  \"email\": \"{{customerRegEmail}}\",\n  \"phone\": \"{{customerRegPhone}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "POST /api/public/auth/register/staff",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/public/auth/register/staff",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{staffRegUsername}}\",\n  \"password\": \"{{staffRegPassword}}\",\n  \"fullName\": \"{{staffRegFullName}}\",\n  \"email\": \"{{staffRegEmail}}\",\n  \"role\": \"WAITER\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "GET /api/users",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/users?page=0&size=20&sort=createdAt",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                },
+                {
+                  "key": "sort",
+                  "value": "createdAt"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET /api/users/{userId}",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/users/{{userId}}"
+          }
+        },
+        {
+          "name": "POST /api/users",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/users",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{newUserUsername}}\",\n  \"password\": \"{{newUserPassword}}\",\n  \"fullName\": \"{{newUserFullName}}\",\n  \"email\": \"{{newUserEmail}}\",\n  \"roles\": [\n    \"WAITER\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200 || pm.response.code === 201) {",
+                  "  var d = pm.response.json();",
+                  "  if (d.id) pm.environment.set('userId', String(d.id));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "PUT /api/users/{userId}",
+          "request": {
+            "method": "PUT",
+            "url": "{{baseUrl}}/api/users/{{userId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"{{newUserFullNameUpdated}}\",\n  \"email\": \"{{newUserEmail}}\",\n  \"active\": true,\n  \"roles\": [\n    \"WAITER\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "02 Public APIs",
+      "item": [
+        {
+          "name": "GET /api/public/menu",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/public/menu",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "GET /api/public/qr/{token}",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/public/qr/{{qrToken}}",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  var d = pm.response.json();",
+                  "  if (d.openTableSessionId) pm.environment.set('tableSessionId', String(d.openTableSessionId));",
+                  "  if (d.tableId) pm.environment.set('tableId', String(d.tableId));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /api/public/qr/{token}/orders",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/public/qr/{{qrToken}}/orders",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"note\": \"QR order from Postman\",\n  \"items\": [\n    {\n      \"menuItemId\": \"{{menuItemId}}\",\n      \"quantity\": 1,\n      \"note\": \"No onion\"\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200 || pm.response.code === 201) {",
+                  "  var d = pm.response.json();",
+                  "  if (d.id) pm.environment.set('orderId', String(d.id));",
+                  "  if (d.orderCode) pm.environment.set('orderCode', d.orderCode);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /api/public/orders/{orderCode}",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/public/orders/{{orderCode}}",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "POST /api/public/qr/{token}/service-requests",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/public/qr/{{qrToken}}/service-requests",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"orderCode\": \"{{orderCode}}\",\n  \"requestType\": \"REQUEST_BILL\",\n  \"note\": \"Please bring bill\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200 || pm.response.code === 201) {",
+                  "  var d = pm.response.json();",
+                  "  if (d.id) pm.environment.set('serviceRequestId', String(d.id));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /api/public/reservations",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/public/reservations",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerName\": \"{{reservationCustomerName}}\",\n  \"phone\": \"{{reservationPhone}}\",\n  \"email\": \"{{reservationEmail}}\",\n  \"partySize\": 2,\n  \"reservationTime\": \"{{reservationTime}}\",\n  \"requestedArea\": \"Main Hall\",\n  \"note\": \"Window seat if possible\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200 || pm.response.code === 201) {",
+                  "  var d = pm.response.json();",
+                  "  if (d.id) pm.environment.set('reservationId', String(d.id));",
+                  "  if (d.reservationCode) pm.environment.set('reservationCode', d.reservationCode);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /api/public/reservations/{reservationCode}",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/public/reservations/{{reservationCode}}",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "POST /api/public/reservations/{reservationCode}/cancel",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/public/reservations/{{reservationCode}}/cancel",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"note\": \"Customer changed plan\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "03 Catalog",
+      "item": [
+        {
+          "name": "GET /api/categories",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/categories?page=0&size=20&sort=createdAt",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "categories"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                },
+                {
+                  "key": "sort",
+                  "value": "createdAt"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /api/categories",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/categories",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"{{categoryCode}}\",\n  \"name\": \"{{categoryName}}\",\n  \"description\": \"Created from Postman\",\n  \"sortOrder\": 1,\n  \"active\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200 || pm.response.code === 201) {",
+                  "  var d = pm.response.json();",
+                  "  if (d.id) pm.environment.set('categoryId', String(d.id));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /api/categories/{categoryId}",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/categories/{{categoryId}}"
+          }
+        },
+        {
+          "name": "PUT /api/categories/{categoryId}",
+          "request": {
+            "method": "PUT",
+            "url": "{{baseUrl}}/api/categories/{{categoryId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"{{categoryCode}}\",\n  \"name\": \"{{categoryNameUpdated}}\",\n  \"description\": \"Updated from Postman\",\n  \"sortOrder\": 2,\n  \"active\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        },
+        {
+          "name": "GET /api/menu-items",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/menu-items?page=0&size=20&sort=createdAt",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "menu-items"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                },
+                {
+                  "key": "sort",
+                  "value": "createdAt"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /api/menu-items",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/menu-items",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"{{menuItemCode}}\",\n  \"name\": \"{{menuItemName}}\",\n  \"description\": \"Created from Postman\",\n  \"price\": 15.5,\n  \"available\": true,\n  \"active\": true,\n  \"categoryId\": \"{{categoryId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200 || pm.response.code === 201) {",
+                  "  var d = pm.response.json();",
+                  "  if (d.id) pm.environment.set('menuItemId', String(d.id));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /api/menu-items/{menuItemId}",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/menu-items/{{menuItemId}}"
+          }
+        },
+        {
+          "name": "PUT /api/menu-items/{menuItemId}",
+          "request": {
+            "method": "PUT",
+            "url": "{{baseUrl}}/api/menu-items/{{menuItemId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"{{menuItemCode}}\",\n  \"name\": \"{{menuItemNameUpdated}}\",\n  \"description\": \"Updated from Postman\",\n  \"price\": 16.0,\n  \"available\": true,\n  \"active\": true,\n  \"categoryId\": \"{{categoryId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        },
+        {
+          "name": "POST /api/menu-items/{menuItemId}/images",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/menu-items/{{menuItemId}}/images",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "{{menuImagePath}}"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "04 Floor",
+      "item": [
+        {
+          "name": "GET /api/areas",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/areas?page=0&size=20&sort=createdAt",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "areas"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                },
+                {
+                  "key": "sort",
+                  "value": "createdAt"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /api/areas",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/areas",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"{{areaCode}}\",\n  \"name\": \"{{areaName}}\",\n  \"description\": \"Postman area\",\n  \"active\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200 || pm.response.code === 201) {",
+                  "  var d = pm.response.json();",
+                  "  if (d.id) pm.environment.set('areaId', String(d.id));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /api/areas/{areaId}",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/areas/{{areaId}}"
+          }
+        },
+        {
+          "name": "PUT /api/areas/{areaId}",
+          "request": {
+            "method": "PUT",
+            "url": "{{baseUrl}}/api/areas/{{areaId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"{{areaCode}}\",\n  \"name\": \"{{areaNameUpdated}}\",\n  \"description\": \"Postman area updated\",\n  \"active\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        },
+        {
+          "name": "GET /api/tables",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/tables?page=0&size=20&sort=createdAt",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "tables"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                },
+                {
+                  "key": "sort",
+                  "value": "createdAt"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /api/tables",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/tables",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"{{tableCode}}\",\n  \"name\": \"{{tableName}}\",\n  \"seatCount\": 4,\n  \"status\": \"AVAILABLE\",\n  \"active\": true,\n  \"areaId\": \"{{areaId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200 || pm.response.code === 201) {",
+                  "  var d = pm.response.json();",
+                  "  if (d.id) pm.environment.set('tableId', String(d.id));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /api/tables/{tableId}",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/tables/{{tableId}}"
+          }
+        },
+        {
+          "name": "PUT /api/tables/{tableId}",
+          "request": {
+            "method": "PUT",
+            "url": "{{baseUrl}}/api/tables/{{tableId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"{{tableCode}}\",\n  \"name\": \"{{tableNameUpdated}}\",\n  \"seatCount\": 6,\n  \"status\": \"AVAILABLE\",\n  \"active\": true,\n  \"areaId\": \"{{areaId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        },
+        {
+          "name": "GET /api/tables/{tableId}/qr",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/tables/{{tableId}}/qr"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  var d = pm.response.json();",
+                  "  if (d.token) pm.environment.set('qrToken', d.token);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /api/tables/{tableId}/qr",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/tables/{{tableId}}/qr",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"diningTableId\": \"{{tableId}}\",\n  \"label\": \"{{qrLabel}}\",\n  \"expiresAt\": null\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200 || pm.response.code === 201) {",
+                  "  var d = pm.response.json();",
+                  "  if (d.token) pm.environment.set('qrToken', d.token);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /api/table-sessions",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/table-sessions?page=0&size=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "table-sessions"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /api/table-sessions",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/table-sessions",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"diningTableId\": \"{{tableId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200 || pm.response.code === 201) {",
+                  "  var d = pm.response.json();",
+                  "  if (d.id) pm.environment.set('tableSessionId', String(d.id));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /api/table-sessions/{sessionId}",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/table-sessions/{{tableSessionId}}"
+          }
+        },
+        {
+          "name": "POST /api/table-sessions/{sessionId}/close",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/table-sessions/{{tableSessionId}}/close"
+          }
+        }
+      ]
+    },
+    {
+      "name": "05 Reservations (Staff)",
+      "item": [
+        {
+          "name": "GET /api/reservations",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/reservations?page=0&size=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "reservations"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /api/reservations",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/reservations",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerName\": \"{{reservationCustomerName}}\",\n  \"phone\": \"{{reservationPhone}}\",\n  \"email\": \"{{reservationEmail}}\",\n  \"partySize\": 3,\n  \"reservationTime\": \"{{reservationTime}}\",\n  \"requestedArea\": \"Main Hall\",\n  \"note\": \"Birthday\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200 || pm.response.code === 201) {",
+                  "  var d = pm.response.json();",
+                  "  if (d.id) pm.environment.set('reservationId', String(d.id));",
+                  "  if (d.reservationCode) pm.environment.set('reservationCode', d.reservationCode);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /api/reservations/{reservationId}",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/reservations/{{reservationId}}"
+          }
+        },
+        {
+          "name": "POST /api/reservations/{reservationId}/confirm",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/reservations/{{reservationId}}/confirm",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"internalNote\": \"Confirmed by phone\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        },
+        {
+          "name": "POST /api/reservations/{reservationId}/check-in",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/reservations/{{reservationId}}/check-in",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"diningTableId\": \"{{tableId}}\",\n  \"internalNote\": \"Arrived\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        },
+        {
+          "name": "POST /api/reservations/{reservationId}/complete",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/reservations/{{reservationId}}/complete"
+          }
+        },
+        {
+          "name": "POST /api/reservations/{reservationId}/cancel",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/reservations/{{reservationId}}/cancel",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"note\": \"No show\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "06 Ordering & Service",
+      "item": [
+        {
+          "name": "GET /api/orders",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/orders?page=0&size=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "orders"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /api/orders",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/orders",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"orderType\": \"DINE_IN\",\n  \"tableSessionId\": \"{{tableSessionId}}\",\n  \"customerId\": null,\n  \"note\": \"Staff order\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200 || pm.response.code === 201) {",
+                  "  var d = pm.response.json();",
+                  "  if (d.id) pm.environment.set('orderId', String(d.id));",
+                  "  if (d.orderCode) pm.environment.set('orderCode', d.orderCode);",
+                  "  if (d.items && d.items.length > 0 && d.items[0].id) pm.environment.set('orderItemId', String(d.items[0].id));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /api/orders/{orderId}",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/orders/{{orderId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  var d = pm.response.json();",
+                  "  if (d.items && d.items.length > 0 && d.items[0].id) pm.environment.set('orderItemId', String(d.items[0].id));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /api/orders/{orderId}/items",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/orders/{{orderId}}/items",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"menuItemId\": \"{{menuItemId}}\",\n  \"quantity\": 2,\n  \"note\": \"Less spicy\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  var d = pm.response.json();",
+                  "  if (d.items && d.items.length > 0 && d.items[0].id) pm.environment.set('orderItemId', String(d.items[0].id));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "PUT /api/orders/{orderId}/items/{orderItemId}",
+          "request": {
+            "method": "PUT",
+            "url": "{{baseUrl}}/api/orders/{{orderId}}/items/{{orderItemId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"quantity\": 3,\n  \"note\": \"Updated by Postman\",\n  \"cancelled\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        },
+        {
+          "name": "POST /api/orders/{orderId}/confirm",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/orders/{{orderId}}/confirm"
+          }
+        },
+        {
+          "name": "POST /api/orders/{orderId}/cancel",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/orders/{{orderId}}/cancel"
+          }
+        },
+        {
+          "name": "GET /api/service-requests",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/service-requests?page=0&size=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "service-requests"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /api/service-requests",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/service-requests",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tableSessionId\": \"{{tableSessionId}}\",\n  \"orderId\": \"{{orderId}}\",\n  \"requestType\": \"CALL_WAITER\",\n  \"note\": \"Need extra plate\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200 || pm.response.code === 201) {",
+                  "  var d = pm.response.json();",
+                  "  if (d.id) pm.environment.set('serviceRequestId', String(d.id));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /api/service-requests/{requestId}/resolve",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/service-requests/{{serviceRequestId}}/resolve"
+          }
+        }
+      ]
+    },
+    {
+      "name": "07 Billing",
+      "item": [
+        {
+          "name": "GET /api/invoices",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/invoices?page=0&size=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "invoices"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /api/invoices",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/invoices",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"orderId\": \"{{orderId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200 || pm.response.code === 201) {",
+                  "  var d = pm.response.json();",
+                  "  if (d.id) pm.environment.set('invoiceId', String(d.id));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /api/invoices/{invoiceId}",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/invoices/{{invoiceId}}"
+          }
+        },
+        {
+          "name": "GET /api/payments",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/payments?page=0&size=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "payments"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /api/payments",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/payments",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"invoiceId\": \"{{invoiceId}}\",\n  \"method\": \"CASH\",\n  \"amount\": 10.0,\n  \"note\": \"Paid via Postman\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200 || pm.response.code === 201) {",
+                  "  var d = pm.response.json();",
+                  "  if (d.id) pm.environment.set('paymentId', String(d.id));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "08 Customers",
+      "item": [
+        {
+          "name": "GET /api/customers",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/customers?page=0&size=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "customers"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /api/customers",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/customers",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"{{customerName}}\",\n  \"phone\": \"{{customerPhone}}\",\n  \"email\": \"{{customerEmail}}\",\n  \"active\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200 || pm.response.code === 201) {",
+                  "  var d = pm.response.json();",
+                  "  if (d.id) pm.environment.set('customerId', String(d.id));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /api/customers/{customerId}",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/customers/{{customerId}}"
+          }
+        },
+        {
+          "name": "PUT /api/customers/{customerId}",
+          "request": {
+            "method": "PUT",
+            "url": "{{baseUrl}}/api/customers/{{customerId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"{{customerNameUpdated}}\",\n  \"phone\": \"{{customerPhone}}\",\n  \"email\": \"{{customerEmail}}\",\n  \"active\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "09 Dev Support (local/test, ADMIN)",
+      "item": [
+        {
+          "name": "POST /api/dev/reset",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/dev/reset"
+          }
+        },
+        {
+          "name": "POST /api/dev/scenarios/baseline",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/dev/scenarios/baseline"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  var d = pm.response.json();",
+                  "  if (d.tableId) pm.environment.set('tableId', String(d.tableId));",
+                  "  if (d.qrToken) pm.environment.set('qrToken', d.qrToken);",
+                  "  if (d.tableSessionId) pm.environment.set('tableSessionId', String(d.tableSessionId));",
+                  "  if (d.orderId) pm.environment.set('orderId', String(d.orderId));",
+                  "  if (d.orderCode) pm.environment.set('orderCode', d.orderCode);",
+                  "  if (d.invoiceId) pm.environment.set('invoiceId', String(d.invoiceId));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /api/dev/scenarios/draft-order",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/dev/scenarios/draft-order"
+          }
+        },
+        {
+          "name": "POST /api/dev/scenarios/pending-bill",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/dev/scenarios/pending-bill"
+          }
+        },
+        {
+          "name": "POST /api/dev/scenarios/open-invoice",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/dev/scenarios/open-invoice"
+          }
+        },
+        {
+          "name": "POST /api/dev/scenarios/payment-history",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/dev/scenarios/payment-history"
+          }
+        }
+      ]
+    }
+  ]
+}

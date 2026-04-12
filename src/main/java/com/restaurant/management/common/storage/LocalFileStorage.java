@@ -49,6 +49,20 @@ public class LocalFileStorage {
         }
     }
 
+    public byte[] readBytes(String storedPath) {
+        try {
+            Path rootPath = Path.of(storageProperties.getRoot()).toAbsolutePath().normalize();
+            Path targetPath = Path.of(storedPath).toAbsolutePath().normalize();
+            if (!targetPath.startsWith(rootPath)) {
+                throw new StorageOperationException("Invalid storage path");
+            }
+
+            return Files.readAllBytes(targetPath);
+        } catch (IOException | InvalidPathException exception) {
+            throw new StorageOperationException("Could not read stored file", exception);
+        }
+    }
+
     private Path preparePath(String folder, String filename) throws IOException {
         Path rootPath = Path.of(storageProperties.getRoot()).toAbsolutePath().normalize();
         Path targetDirectory = rootPath.resolve(normalizeFolder(folder)).normalize();

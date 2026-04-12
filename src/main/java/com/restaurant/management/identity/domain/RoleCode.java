@@ -4,5 +4,6 @@ public enum RoleCode {
     ADMIN,
     MANAGER,
     WAITER,
-    CASHIER
+    CASHIER,
+    CUSTOMER
 }

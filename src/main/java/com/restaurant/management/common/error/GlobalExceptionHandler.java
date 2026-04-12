@@ -11,6 +11,7 @@ import org.springframework.http.ProblemDetail;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.validation.FieldError;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -55,6 +56,12 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.BAD_REQUEST, "Validation Failed", exception.getMessage(), request);
     }
 
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    ProblemDetail handleUnreadableBody(HttpMessageNotReadableException exception, HttpServletRequest request) {
+        String detail = resolveUnreadableBodyDetail(exception, request);
+        return build(HttpStatus.BAD_REQUEST, "Malformed Request Body", detail, request);
+    }
+
     @ExceptionHandler(StorageOperationException.class)
     ProblemDetail handleStorage(StorageOperationException exception, HttpServletRequest request) {
         return build(HttpStatus.INTERNAL_SERVER_ERROR, "Storage Error", exception.getMessage(), request);
@@ -76,5 +83,22 @@ public class GlobalExceptionHandler {
 
     private String formatFieldError(FieldError fieldError) {
         return fieldError.getField() + ": " + fieldError.getDefaultMessage();
+    }
+
+    private String resolveUnreadableBodyDetail(HttpMessageNotReadableException exception, HttpServletRequest request) {
+        String message = exception.getMostSpecificCause() != null
+                ? exception.getMostSpecificCause().getMessage()
+                : exception.getMessage();
+
+        if (request.getRequestURI().startsWith("/api/menu-items") && message != null) {
+            if (message.contains("from Array value")) {
+                return "Payload cho menu item phải là một JSON object, không phải mảng. Ví dụ đúng: {\"code\":\"PHO-001\",\"name\":\"Pho Beef\",...}";
+            }
+            if (message.contains("Cannot map `null` into type `boolean`")) {
+                return "Payload menu item đang gửi null cho một trường boolean. Hãy gửi true/false hoặc bỏ hẳn field đó.";
+            }
+        }
+
+        return "Request body không đúng định dạng JSON mà endpoint này mong đợi.";
     }
 }

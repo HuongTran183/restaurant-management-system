@@ -77,7 +77,9 @@ public class CategoryService {
                 category.getName(),
                 category.getDescription(),
                 category.getSortOrder(),
-                category.isActive()
+                category.isActive(),
+                category.getCreatedAt(),
+                category.getUpdatedAt()
         );
     }
 }

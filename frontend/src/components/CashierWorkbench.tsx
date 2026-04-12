@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import type { FormEvent, ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { Invoice, MenuItem, Order, OrderItemStatus, Payment, PaymentMethod } from '../lib/api';
+import { formatCurrencyVnd, formatEditableMoney } from '../lib/currency';
 
 const PAYMENT_METHOD_OPTIONS: PaymentMethod[] = ['CASH', 'CARD', 'BANK_TRANSFER', 'E_WALLET'];
 type Translate = ReturnType<typeof useTranslation>['t'];
@@ -139,7 +140,7 @@ export function CashierWorkbench({
       return {
         ...current,
         invoiceId: String(selectedInvoice.id),
-        amount: shouldReuseAmount ? current.amount : remaining.toFixed(2),
+        amount: shouldReuseAmount ? current.amount : formatEditableMoney(remaining),
       };
     });
   }, [openInvoices, showBillingOperations]);
@@ -152,7 +153,7 @@ export function CashierWorkbench({
 
     setPaymentForm({
       invoiceId: String(invoice.id),
-      amount: (invoice.totalAmount - invoice.paidAmount).toFixed(2),
+      amount: formatEditableMoney(invoice.totalAmount - invoice.paidAmount),
       method: 'CASH',
       note: '',
     });
@@ -307,7 +308,7 @@ export function CashierWorkbench({
                                     : entry.tone === 'ember'
                                       ? 'border-ember/20 bg-ember/10 text-ember'
                                       : entry.tone === 'warm'
-                                        ? 'border-amber-300/40 bg-amber-100/70 text-amber-900'
+                                        ? 'border-sun/30 bg-sun/10 text-sun'
                                         : 'border-slate/15 bg-slate/10 text-slate',
                                 )}
                               >
@@ -346,45 +347,79 @@ export function CashierWorkbench({
 
                                     {order.status === 'DRAFT' && item.status !== 'CANCELLED' ? (
                                       <form
-                                        className="grid gap-3 rounded-[20px] border border-ink/10 bg-white/75 p-3 md:min-w-[22rem] md:grid-cols-[6rem_1fr]"
+                                        className="grid gap-3 rounded-[20px] border border-ink/10 bg-white/75 p-3 md:min-w-[24rem]"
                                         onSubmit={(event) => submitOrderItemUpdate(event, order.id, item.id)}
                                       >
                                         <label className="block">
-                                          <span className="mb-2 block text-xs font-bold uppercase tracking-[0.18em] text-slate">{t('Qty')}</span>
-                                          <input
-                                            aria-label={t('Quantity for {{itemName}} on {{orderCode}}', {
-                                              itemName: item.itemName,
-                                              orderCode: order.orderCode,
-                                            })}
-                                            className="field"
-                                            defaultValue={String(item.quantity)}
-                                            min="1"
-                                            name="quantity"
-                                            step="1"
-                                            type="number"
-                                          />
+                                          <span className="mb-2 block text-xs font-bold uppercase tracking-[0.18em] text-slate">{t('Quantity')}</span>
+                                          <div className="flex items-center gap-2">
+                                            <button
+                                              type="button"
+                                              className="flex h-10 w-10 items-center justify-center rounded-lg border border-ink/10 bg-white font-semibold text-slate hover:bg-slate/10 hover:text-ink disabled:opacity-50"
+                                              onClick={(e) => {
+                                                const input = e.currentTarget.nextElementSibling as HTMLInputElement;
+                                                const newValue = Math.max(1, parseInt(input.value) - 1);
+                                                input.value = String(newValue);
+                                              }}
+                                              disabled={isBusy}
+                                            >
+                                              −
+                                            </button>
+                                            <input
+                                              aria-label={t('Quantity for {{itemName}} on {{orderCode}}', {
+                                                itemName: item.itemName,
+                                                orderCode: order.orderCode,
+                                              })}
+                                              className="field flex-1 text-center"
+                                              defaultValue={String(item.quantity)}
+                                              min="1"
+                                              name="quantity"
+                                              step="1"
+                                              type="number"
+                                              disabled={isBusy}
+                                            />
+                                            <button
+                                              type="button"
+                                              className="flex h-10 w-10 items-center justify-center rounded-lg border border-ink/10 bg-white font-semibold text-slate hover:bg-slate/10 hover:text-ink disabled:opacity-50"
+                                              onClick={(e) => {
+                                                const input = e.currentTarget.previousElementSibling as HTMLInputElement;
+                                                const newValue = parseInt(input.value) + 1;
+                                                input.value = String(newValue);
+                                              }}
+                                              disabled={isBusy}
+                                            >
+                                              +
+                                            </button>
+                                          </div>
                                         </label>
                                         <label className="block">
                                           <span className="mb-2 block text-xs font-bold uppercase tracking-[0.18em] text-slate">{t('Line note')}</span>
-                                          <input
+                                          <textarea
                                             aria-label={t('Line note for {{itemName}} on {{orderCode}}', {
                                               itemName: item.itemName,
                                               orderCode: order.orderCode,
                                             })}
-                                            className="field"
+                                            className="field min-h-[4rem] resize-y"
                                             defaultValue={item.note ?? ''}
                                             name="note"
-                                            placeholder={t('Guest preference, allergy, course...')}
+                                            placeholder={t('Guest preference, allergy, special request...')}
+                                            disabled={isBusy}
+                                            rows={2}
                                           />
                                         </label>
-                                        <div className="flex flex-wrap gap-2 md:col-span-2">
-                                          <button className="button-chip-primary" disabled={isBusy} type="submit">
+                                        <div className="flex flex-wrap gap-2">
+                                          <button className="button-chip-primary flex-1" disabled={isBusy} type="submit">
                                             {isBusy ? t('Saving...') : t('Update line')}
                                           </button>
                                           <button
-                                            className="button-chip"
+                                            className="button-chip border-ember/20 text-ember hover:bg-ember/10"
                                             disabled={isBusy}
-                                            onClick={() => onUpdateOrderItem({ orderId: order.id, orderItemId: item.id, cancelled: true })}
+                                            onClick={(e) => {
+                                              e.preventDefault();
+                                              if (window.confirm(t('Cancel this line item? This action cannot be undone.'))) {
+                                                onUpdateOrderItem({ orderId: order.id, orderItemId: item.id, cancelled: true });
+                                              }
+                                            }}
                                             type="button"
                                           >
                                             {isBusy ? t('Saving...') : t('Cancel line')}
@@ -392,6 +427,13 @@ export function CashierWorkbench({
                                         </div>
                                       </form>
                                     ) : null}
+
+                                    {item.status === 'CANCELLED' && (
+                                      <div className="rounded-lg bg-slate/10 px-4 py-3 text-sm text-slate">
+                                        <span className="font-semibold">{t('⚠ Line cancelled')}</span>
+                                        <p className="mt-1 text-xs">{t('This item will not be prepared or charged.')}</p>
+                                      </div>
+                                    )}
                                   </div>
                                 </div>
                               ))}
@@ -774,11 +816,7 @@ function buildOrderTimeline(order: Order, invoice: Invoice | undefined, payments
 }
 
 function formatMoney(value: number) {
-  return new Intl.NumberFormat('vi-VN', {
-    style: 'currency',
-    currency: 'USD',
-    maximumFractionDigits: 2,
-  }).format(Number(value));
+  return formatCurrencyVnd(value);
 }
 
 function formatMoment(value: string | null) {

@@ -63,6 +63,12 @@ export function StaffLoginPage({
           </button>
           {loginMutation.error ? <InlineError error={loginMutation.error} /> : null}
         </div>
+        <p className="text-center text-sm text-slate">
+          {t("Don't have an account?")}{' '}
+          <a href="/staff/register" className="font-medium text-forest hover:underline">
+            {t('Register here')}
+          </a>
+        </p>
       </form>
     </section>
   );

@@ -130,11 +130,11 @@ class PublicOrderingApiIntegrationTest {
         staffOrder.setOrderType(OrderType.TAKEAWAY);
         staffOrder.setSourceChannel(OrderSourceChannel.STAFF);
         staffOrder.setStatus(com.restaurant.management.ordering.domain.OrderStatus.CONFIRMED);
-        staffOrder.setSubtotal(new BigDecimal("25.00"));
+        staffOrder.setSubtotal(new BigDecimal("250000.00"));
         staffOrder.setServiceFee(BigDecimal.ZERO.setScale(2));
         staffOrder.setVatAmount(BigDecimal.ZERO.setScale(2));
         staffOrder.setDiscountAmount(BigDecimal.ZERO.setScale(2));
-        staffOrder.setTotalAmount(new BigDecimal("25.00"));
+        staffOrder.setTotalAmount(new BigDecimal("250000.00"));
         staffOrder.setPaymentRequested(false);
         orderRepository.save(staffOrder);
 
@@ -173,7 +173,7 @@ class PublicOrderingApiIntegrationTest {
         menuItem.setCode("ITEM-" + suffix);
         menuItem.setName("Pho Special " + suffix);
         menuItem.setDescription("Public ordering test item");
-        menuItem.setPrice(new BigDecimal("12.50"));
+        menuItem.setPrice(new BigDecimal("125000.00"));
         menuItem.setAvailable(true);
         menuItem.setActive(true);
         menuItem.setCategory(category);

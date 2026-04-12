@@ -11,8 +11,8 @@ module.exports = {
         slate: '#3f4f5b',
       },
       fontFamily: {
-        display: ['Fraunces', 'Georgia', 'serif'],
-        body: ['Space Grotesk', 'Segoe UI', 'sans-serif'],
+        display: ['Roboto', 'Segoe UI', 'Arial', 'sans-serif'],
+        body: ['Roboto', 'Segoe UI', 'Arial', 'sans-serif'],
       },
       boxShadow: {
         float: '0 28px 90px -36px rgba(22, 33, 29, 0.45)',

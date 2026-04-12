@@ -20,7 +20,7 @@ export function QrExperiencePage() {
     queryFn: () => publicApi.qrTable(token),
     enabled: token.length > 0,
   });
-  const menuQuery = useQuery({ queryKey: ['public-menu'], queryFn: publicApi.menu });
+  const menuQuery = useQuery({ queryKey: ['public-menu'], queryFn: () => publicApi.menu() });
   const orderQuery = useQuery({
     queryKey: ['public-order', activeOrderCode],
     queryFn: () => publicApi.getOrder(activeOrderCode),

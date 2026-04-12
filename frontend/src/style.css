@@ -1,18 +1,18 @@
 :root {
   --text: #6b6375;
   --text-h: #08060d;
-  --bg: #fff;
-  --border: #e5e4e7;
+  --bg: #fcfbf8;
+  --border: rgba(8, 6, 13, 0.08);
   --code-bg: #f4f3ec;
-  --accent: #aa3bff;
-  --accent-bg: rgba(170, 59, 255, 0.1);
-  --accent-border: rgba(170, 59, 255, 0.5);
-  --social-bg: rgba(244, 243, 236, 0.5);
+  --accent: #254640;
+  --accent-bg: rgba(37, 70, 64, 0.1);
+  --accent-border: rgba(37, 70, 64, 0.18);
+  --social-bg: rgba(255, 255, 255, 0.86);
   --shadow:
-    rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
+    rgba(8, 6, 13, 0.08) 0 18px 45px -24px, rgba(8, 6, 13, 0.04) 0 8px 18px -12px;
 
-  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
+  --sans: Roboto, 'Segoe UI', Arial, sans-serif;
+  --heading: Roboto, 'Segoe UI', Arial, sans-serif;
   --mono: ui-monospace, Consolas, monospace;
 
   font: 18px/145% var(--sans);
@@ -35,14 +35,14 @@
     --text: #9ca3af;
     --text-h: #f3f4f6;
     --bg: #16171d;
-    --border: #2e303a;
+    --border: rgba(243, 244, 246, 0.1);
     --code-bg: #1f2028;
-    --accent: #c084fc;
-    --accent-bg: rgba(192, 132, 252, 0.15);
-    --accent-border: rgba(192, 132, 252, 0.5);
-    --social-bg: rgba(47, 48, 58, 0.5);
+    --accent: #cbd5d1;
+    --accent-bg: rgba(203, 213, 209, 0.14);
+    --accent-border: rgba(203, 213, 209, 0.2);
+    --social-bg: rgba(47, 48, 58, 0.78);
     --shadow:
-      rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
+      rgba(0, 0, 0, 0.35) 0 18px 40px -24px, rgba(0, 0, 0, 0.22) 0 10px 18px -16px;
   }
 
   #social .button-icon {
@@ -104,12 +104,11 @@ code {
   border-radius: 5px;
   color: var(--accent);
   background: var(--accent-bg);
-  border: 2px solid transparent;
-  transition: border-color 0.3s;
+  transition: background 0.3s, box-shadow 0.3s;
   margin-bottom: 24px;
 
   &:hover {
-    border-color: var(--accent-border);
+    box-shadow: 0 10px 24px -18px var(--accent-border);
   }
   &:focus-visible {
     outline: 2px solid var(--accent);
@@ -161,11 +160,12 @@ code {
   max-width: 100%;
   margin: 0 auto;
   text-align: center;
-  border-inline: 1px solid var(--border);
   min-height: 100svh;
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
+  background: linear-gradient(180deg, rgba(255,255,255,0.62), rgba(255,255,255,0.84));
+  box-shadow: var(--shadow);
 }
 
 #center {
@@ -184,12 +184,16 @@ code {
 
 #next-steps {
   display: flex;
-  border-top: 1px solid var(--border);
   text-align: left;
+  gap: 16px;
+  padding: 0 24px 24px;
 
   & > div {
     flex: 1 1 0;
     padding: 32px;
+    border-radius: 24px;
+    background: var(--social-bg);
+    box-shadow: var(--shadow);
     @media (max-width: 1024px) {
       padding: 24px 20px;
     }
@@ -204,15 +208,6 @@ code {
   @media (max-width: 1024px) {
     flex-direction: column;
     text-align: center;
-  }
-}
-
-#docs {
-  border-right: 1px solid var(--border);
-
-  @media (max-width: 1024px) {
-    border-right: none;
-    border-bottom: 1px solid var(--border);
   }
 }
 
@@ -267,30 +262,14 @@ code {
 
 #spacer {
   height: 88px;
-  border-top: 1px solid var(--border);
   @media (max-width: 1024px) {
     height: 48px;
   }
 }
 
 .ticks {
-  position: relative;
   width: 100%;
-
-  &::before,
-  &::after {
-    content: '';
-    position: absolute;
-    top: -4.5px;
-    border: 5px solid transparent;
-  }
-
-  &::before {
-    left: 0;
-    border-left-color: var(--border);
-  }
-  &::after {
-    right: 0;
-    border-right-color: var(--border);
-  }
+  height: 1px;
+  margin: 0 24px 24px;
+  background: linear-gradient(90deg, transparent, var(--border), transparent);
 }

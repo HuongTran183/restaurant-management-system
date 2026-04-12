@@ -31,6 +31,12 @@ public class MenuItem extends AuditableEntity {
     @Column(nullable = false)
     private boolean active = true;
 
+    @Column(nullable = false)
+    private boolean featured = false;
+
+    @Column(nullable = false)
+    private boolean promotional = false;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "category_id", nullable = false)
     private Category category;
@@ -81,6 +87,22 @@ public class MenuItem extends AuditableEntity {
 
     public void setActive(boolean active) {
         this.active = active;
+    }
+
+    public boolean isFeatured() {
+        return featured;
+    }
+
+    public void setFeatured(boolean featured) {
+        this.featured = featured;
+    }
+
+    public boolean isPromotional() {
+        return promotional;
+    }
+
+    public void setPromotional(boolean promotional) {
+        this.promotional = promotional;
     }
 
     public Category getCategory() {

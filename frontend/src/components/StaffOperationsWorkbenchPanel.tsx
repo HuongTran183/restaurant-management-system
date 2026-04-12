@@ -123,7 +123,7 @@ export function StaffOperationsWorkbenchPanel({
         ) : null}
 
         {activeSession ? (
-          <div className="mb-5 rounded-[24px] border border-forest/15 bg-forest/5 px-4 py-4">
+          <div className="mb-5 rounded-lg border border-forest/15 bg-white px-4 py-4">
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
               <div>
                 <p className="text-xs font-bold uppercase tracking-[0.24em] text-forest">
@@ -199,11 +199,11 @@ export function StaffOperationsWorkbenchPanel({
 }
 
 function LoadingState({ label }: { label: string }) {
-  return <div className="mt-6 rounded-[24px] border border-ink/10 bg-white/70 px-4 py-4 text-sm text-slate">{label}...</div>;
+  return <div className="mt-6 rounded-md border border-ink/10 bg-white px-4 py-4 text-sm text-slate">{label}...</div>;
 }
 
 function ErrorState({ message }: { message: string }) {
-  return <div className="mt-6 rounded-[24px] border border-ember/20 bg-ember/10 px-4 py-4 text-sm text-ember">{message}</div>;
+  return <div className="mt-6 rounded-md border border-ember/20 bg-white px-4 py-4 text-sm text-ember">{message}</div>;
 }
 
 function InlineError({ message }: { message: string }) {

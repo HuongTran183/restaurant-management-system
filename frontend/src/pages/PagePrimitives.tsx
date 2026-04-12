@@ -44,10 +44,13 @@ export function InfoPair({ label, value }: { label: string; value: string }) {
   );
 }
 
-export function Field({ children, className, label }: { children: ReactNode; className?: string; label: string }) {
+export function Field({ children, className, label, required }: { children: ReactNode; className?: string; label: string; required?: boolean }) {
   return (
     <label className={className}>
-      <span className="mb-2 block text-xs font-bold uppercase tracking-[0.24em] text-slate">{label}</span>
+      <span className="mb-2 block text-xs font-bold uppercase tracking-[0.24em] text-slate">
+        {label}
+        {required && <span className="text-ember ml-1">*</span>}
+      </span>
       {children}
     </label>
   );
@@ -64,16 +67,19 @@ export function StatusPill({ children, tone }: { children: ReactNode; tone: 'for
   return <span className={clsx('rounded-full border px-3 py-1 text-xs font-bold uppercase tracking-[0.2em]', styles)}>{children}</span>;
 }
 
-export function LoadingState({ label }: { label: string }) {
-  return <div className="mt-6 rounded-[24px] border border-ink/10 bg-white/70 px-4 py-4 text-sm text-slate">{label}...</div>;
+export function LoadingState({ label, message }: { label?: string; message?: string }) {
+  const text = message || label || 'Loading';
+  return <div className="mt-6 rounded-[24px] border border-ink/10 bg-white/70 px-4 py-4 text-sm text-slate">{text}...</div>;
 }
 
-export function ErrorState({ error }: { error: unknown }) {
-  return <div className="mt-6 rounded-[24px] border border-ember/20 bg-ember/10 px-4 py-4 text-sm text-ember">{getErrorMessage(error)}</div>;
+export function ErrorState({ error, message }: { error?: unknown; message?: string }) {
+  const text = message || getErrorMessage(error);
+  return <div className="mt-6 rounded-[24px] border border-ember/20 bg-ember/10 px-4 py-4 text-sm text-ember">{text}</div>;
 }
 
-export function InlineError({ error, light = false }: { error: unknown; light?: boolean }) {
-  return <p className={clsx('text-sm', light ? 'text-cream/80' : 'text-ember')}>{getErrorMessage(error)}</p>;
+export function InlineError({ error, message, light = false }: { error?: unknown; message?: string; light?: boolean }) {
+  const text = message || getErrorMessage(error);
+  return <p className={clsx('text-sm', light ? 'text-cream/80' : 'text-ember')}>{text}</p>;
 }
 
 export function EmptyState({ icon, title, message, action }: { icon: string; title: string; message: string; action?: { label: string; onClick: () => void } }) {
