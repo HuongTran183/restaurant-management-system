@@ -23,6 +23,7 @@ import { StaffReservationCreatePage } from './pages/StaffReservationCreatePage';
 import { StaffRegistrationPage } from './pages/StaffRegistrationPage';
 import { StaffServiceRequestCreatePage } from './pages/StaffServiceRequestCreatePage';
 import { StaffTableQrPage } from './pages/StaffTableQrPage';
+import { KitchenDisplayPage } from './pages/KitchenDisplayPage';
 import { TableManagementPage } from './pages/TableManagementPage';
 import { UserManagementPage } from './pages/UserManagementPage';
 
@@ -234,6 +235,18 @@ export default function App() {
           </ProtectedRoute>
         }
       />
+      <Route
+        path="/staff/kitchen"
+        element={
+          <ProtectedRoute session={session} isSessionReady={isSessionReady}>
+            <KitchenDisplayPage
+              session={session}
+              onLogout={() => updateSession(null)}
+              onRefreshSession={refreshCurrentSession}
+            />
+          </ProtectedRoute>
+        }
+      />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
@@ -248,7 +261,8 @@ export default function App() {
     || location.pathname.startsWith('/staff/users')
     || location.pathname.startsWith('/staff/customers')
     || location.pathname.startsWith('/staff/reservations/new')
-    || location.pathname.startsWith('/staff/service-requests/new');
+    || location.pathname.startsWith('/staff/service-requests/new')
+    || location.pathname.startsWith('/staff/kitchen');
   if (isStandaloneRoute) {
     return appRoutes;
   }

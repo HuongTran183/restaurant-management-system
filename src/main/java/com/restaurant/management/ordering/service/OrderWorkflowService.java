@@ -6,6 +6,8 @@ import com.restaurant.management.catalog.service.MenuItemService;
 import com.restaurant.management.common.error.BusinessConflictException;
 import com.restaurant.management.common.error.ResourceNotFoundException;
 import com.restaurant.management.common.web.PageResponse;
+import com.restaurant.management.common.websocket.WebSocketEvent;
+import com.restaurant.management.common.websocket.WebSocketEventPublisher;
 import com.restaurant.management.customer.domain.Customer;
 import com.restaurant.management.customer.repository.CustomerRepository;
 import com.restaurant.management.floor.domain.TableSession;
@@ -19,6 +21,7 @@ import com.restaurant.management.ordering.domain.OrderTicket;
 import com.restaurant.management.ordering.domain.OrderType;
 import com.restaurant.management.ordering.dto.AddOrderItemRequest;
 import com.restaurant.management.ordering.dto.CreateOrderRequest;
+import com.restaurant.management.ordering.dto.KitchenItemResponse;
 import com.restaurant.management.ordering.dto.OrderItemResponse;
 import com.restaurant.management.ordering.dto.OrderResponse;
 import com.restaurant.management.ordering.dto.UpdateOrderItemRequest;
@@ -48,6 +51,7 @@ public class OrderWorkflowService {
     private final TableSessionService tableSessionService;
     private final CustomerRepository customerRepository;
     private final PricingService pricingService;
+    private final WebSocketEventPublisher webSocketEventPublisher;
     private final SecureRandom secureRandom = new SecureRandom();
 
     public OrderWorkflowService(
@@ -57,7 +61,8 @@ public class OrderWorkflowService {
             MenuItemService menuItemService,
             TableSessionService tableSessionService,
             CustomerRepository customerRepository,
-            PricingService pricingService
+            PricingService pricingService,
+            WebSocketEventPublisher webSocketEventPublisher
     ) {
         this.orderRepository = orderRepository;
         this.orderItemRepository = orderItemRepository;
@@ -66,6 +71,7 @@ public class OrderWorkflowService {
         this.tableSessionService = tableSessionService;
         this.customerRepository = customerRepository;
         this.pricingService = pricingService;
+        this.webSocketEventPublisher = webSocketEventPublisher;
     }
 
     @Transactional(readOnly = true)
@@ -228,7 +234,11 @@ public class OrderWorkflowService {
             recordHistory(order, OrderStatus.CONFIRMED, OrderStatus.CONFIRMED, "Additional order items confirmed");
         }
         reprice(order, items);
-        return toResponse(order, items);
+
+        OrderResponse response = toResponse(order, items);
+        webSocketEventPublisher.publishOrderEvent(WebSocketEvent.of("ORDER_CONFIRMED", order.getId(), order.getOrderCode(), response));
+        webSocketEventPublisher.publishKitchenEvent(WebSocketEvent.of("KITCHEN_NEW_ITEMS", order.getId(), order.getOrderCode(), response));
+        return response;
     }
 
     @Transactional
@@ -242,7 +252,11 @@ public class OrderWorkflowService {
         items.forEach(item -> item.setStatus(OrderItemStatus.CANCELLED));
         changeStatus(order, OrderStatus.CANCELLED, "Order cancelled");
         reprice(order, items);
-        return toResponse(order, items);
+
+        OrderResponse response = toResponse(order, items);
+        webSocketEventPublisher.publishOrderEvent(WebSocketEvent.of("ORDER_CANCELLED", order.getId(), order.getOrderCode(), response));
+        webSocketEventPublisher.publishKitchenEvent(WebSocketEvent.of("KITCHEN_ORDER_CANCELLED", order.getId(), order.getOrderCode(), response));
+        return response;
     }
 
     @Transactional
@@ -251,7 +265,55 @@ public class OrderWorkflowService {
         order.setPaymentRequested(false);
         if (order.getStatus().canComplete()) {
             changeStatus(order, OrderStatus.COMPLETED, "Invoice paid");
+            webSocketEventPublisher.publishOrderEvent(WebSocketEvent.of("ORDER_COMPLETED", order.getId(), order.getOrderCode(), null));
         }
+    }
+
+    @Transactional(readOnly = true)
+    public List<KitchenItemResponse> getKitchenQueue() {
+        List<OrderItem> items = orderItemRepository.findAllByStatusInOrderByIdAsc(
+                List.of(OrderItemStatus.CONFIRMED, OrderItemStatus.PREPARING)
+        );
+        return items.stream().map(this::toKitchenItemResponse).toList();
+    }
+
+    @Transactional
+    public KitchenItemResponse startPreparing(Long itemId) {
+        OrderItem item = findOrderItemById(itemId);
+        if (item.getStatus() != OrderItemStatus.CONFIRMED) {
+            throw new BusinessConflictException("Item can only start preparing from CONFIRMED status, current: " + item.getStatus());
+        }
+        item.setStatus(OrderItemStatus.PREPARING);
+
+        KitchenItemResponse response = toKitchenItemResponse(item);
+        webSocketEventPublisher.publishKitchenEvent(WebSocketEvent.of("ITEM_PREPARING", item.getOrder().getId(), item.getOrder().getOrderCode(), response));
+        return response;
+    }
+
+    @Transactional
+    public KitchenItemResponse markReady(Long itemId) {
+        OrderItem item = findOrderItemById(itemId);
+        if (item.getStatus() != OrderItemStatus.PREPARING) {
+            throw new BusinessConflictException("Item can only be marked ready from PREPARING status, current: " + item.getStatus());
+        }
+        item.setStatus(OrderItemStatus.READY);
+
+        KitchenItemResponse response = toKitchenItemResponse(item);
+        webSocketEventPublisher.publishKitchenEvent(WebSocketEvent.of("ITEM_READY", item.getOrder().getId(), item.getOrder().getOrderCode(), response));
+        return response;
+    }
+
+    @Transactional
+    public KitchenItemResponse markServed(Long itemId) {
+        OrderItem item = findOrderItemById(itemId);
+        if (item.getStatus() != OrderItemStatus.READY) {
+            throw new BusinessConflictException("Item can only be marked served from READY status, current: " + item.getStatus());
+        }
+        item.setStatus(OrderItemStatus.SERVED);
+
+        KitchenItemResponse response = toKitchenItemResponse(item);
+        webSocketEventPublisher.publishKitchenEvent(WebSocketEvent.of("ITEM_SERVED", item.getOrder().getId(), item.getOrder().getOrderCode(), response));
+        return response;
     }
 
     public OrderTicket findOrder(Long orderId) {
@@ -330,6 +392,11 @@ public class OrderWorkflowService {
         return orderItemRepository.findAllByOrderIdOrderByIdAsc(orderId);
     }
 
+    private OrderItem findOrderItemById(Long itemId) {
+        return orderItemRepository.findById(itemId)
+                .orElseThrow(() -> new ResourceNotFoundException("Order item not found: " + itemId));
+    }
+
     private OrderItem findOrderItem(Long orderId, Long orderItemId) {
         return findOrderItems(orderId).stream()
                 .filter(orderItem -> orderItem.getId().equals(orderItemId))
@@ -398,6 +465,22 @@ public class OrderWorkflowService {
                 orderItem.getLineTotal(),
                 orderItem.getNote(),
                 orderItem.getStatus()
+        );
+    }
+
+    private KitchenItemResponse toKitchenItemResponse(OrderItem orderItem) {
+        OrderTicket order = orderItem.getOrder();
+        return new KitchenItemResponse(
+                orderItem.getId(),
+                order.getId(),
+                order.getOrderCode(),
+                order.getTableSession() == null ? null : order.getTableSession().getId(),
+                orderItem.getMenuItem().getId(),
+                orderItem.getItemNameSnapshot(),
+                orderItem.getQuantity(),
+                orderItem.getNote(),
+                orderItem.getStatus(),
+                orderItem.getCreatedAt()
         );
     }
 

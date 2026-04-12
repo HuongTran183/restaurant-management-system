@@ -29,6 +29,11 @@ export default defineConfig(({ mode }) => {
             });
           },
         },
+        '/ws': {
+          target: apiProxyTarget,
+          changeOrigin: true,
+          ws: true,
+        },
       },
     },
     preview: {

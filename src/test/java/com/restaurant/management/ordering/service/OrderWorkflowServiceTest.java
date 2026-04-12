@@ -10,6 +10,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.restaurant.management.billing.service.PricingService;
+import com.restaurant.management.common.websocket.WebSocketEventPublisher;
 import com.restaurant.management.catalog.domain.MenuItem;
 import com.restaurant.management.catalog.service.MenuItemService;
 import com.restaurant.management.customer.repository.CustomerRepository;
@@ -48,6 +49,7 @@ class OrderWorkflowServiceTest {
         TableSessionService tableSessionService = mock(TableSessionService.class);
         CustomerRepository customerRepository = mock(CustomerRepository.class);
         PricingService pricingService = mock(PricingService.class);
+        WebSocketEventPublisher webSocketEventPublisher = mock(WebSocketEventPublisher.class);
 
         OrderWorkflowService service = new OrderWorkflowService(
                 orderRepository,
@@ -56,7 +58,8 @@ class OrderWorkflowServiceTest {
                 menuItemService,
                 tableSessionService,
                 customerRepository,
-                pricingService
+                pricingService,
+                webSocketEventPublisher
         );
 
         TableSession tableSession = new TableSession();
@@ -138,6 +141,7 @@ class OrderWorkflowServiceTest {
         TableSessionService tableSessionService = mock(TableSessionService.class);
         CustomerRepository customerRepository = mock(CustomerRepository.class);
         PricingService pricingService = mock(PricingService.class);
+        WebSocketEventPublisher webSocketEventPublisher = mock(WebSocketEventPublisher.class);
 
         OrderWorkflowService service = new OrderWorkflowService(
                 orderRepository,
@@ -146,7 +150,8 @@ class OrderWorkflowServiceTest {
                 menuItemService,
                 tableSessionService,
                 customerRepository,
-                pricingService
+                pricingService,
+                webSocketEventPublisher
         );
 
         OrderTicket order = new OrderTicket();

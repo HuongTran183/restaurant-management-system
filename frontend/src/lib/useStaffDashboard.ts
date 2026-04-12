@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   ApiError,
@@ -11,6 +11,7 @@ import {
   type ReservationStatus,
   type TableSession,
 } from './api';
+import { useDashboardWebSocket, type WebSocketEvent } from './websocket';
 import type { FloorOverviewActionState } from '../components/FloorOverview';
 import i18n from '../i18n/i18n';
 import {
@@ -792,6 +793,12 @@ export function useStaffDashboard(
   const refreshWorkspace = () => {
     void queryClient.invalidateQueries({ queryKey: ['staff'] });
   };
+
+  // WebSocket: auto-refresh dashboard on real-time events
+  const onWsEvent = useCallback((_event: WebSocketEvent) => {
+    refreshWorkspace();
+  }, [queryClient]);
+  useDashboardWebSocket(onWsEvent, !!session);
 
   // ============================================================================
   // Return

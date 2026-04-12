@@ -41,7 +41,8 @@ public class SecurityConfiguration {
                                 "/v3/api-docs/**",
                                 "/actuator/health",
                                 "/api/auth/login",
-                                "/api/auth/refresh"
+                                "/api/auth/refresh",
+                                "/ws/**"
                         ).permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/public/reservations").authenticated()
                         .requestMatchers("/api/public/**").permitAll()

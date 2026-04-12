@@ -3,6 +3,8 @@ package com.restaurant.management.reservation.service;
 import com.restaurant.management.common.error.BusinessConflictException;
 import com.restaurant.management.common.error.ResourceNotFoundException;
 import com.restaurant.management.common.web.PageResponse;
+import com.restaurant.management.common.websocket.WebSocketEvent;
+import com.restaurant.management.common.websocket.WebSocketEventPublisher;
 import com.restaurant.management.floor.domain.Area;
 import com.restaurant.management.floor.domain.DiningTable;
 import com.restaurant.management.floor.domain.TableSessionStatus;
@@ -49,6 +51,7 @@ public class ReservationService {
     private final TableSessionRepository tableSessionRepository;
     private final AreaRepository areaRepository;
     private final DiningTableRepository diningTableRepository;
+    private final WebSocketEventPublisher webSocketEventPublisher;
     private final SecureRandom secureRandom = new SecureRandom();
 
     public ReservationService(
@@ -57,7 +60,8 @@ public class ReservationService {
             DiningTableService diningTableService,
             TableSessionRepository tableSessionRepository,
             AreaRepository areaRepository,
-            DiningTableRepository diningTableRepository
+            DiningTableRepository diningTableRepository,
+            WebSocketEventPublisher webSocketEventPublisher
     ) {
         this.reservationRepository = reservationRepository;
         this.reservationHistoryRepository = reservationHistoryRepository;
@@ -65,6 +69,7 @@ public class ReservationService {
         this.tableSessionRepository = tableSessionRepository;
         this.areaRepository = areaRepository;
         this.diningTableRepository = diningTableRepository;
+        this.webSocketEventPublisher = webSocketEventPublisher;
     }
 
     @Transactional(readOnly = true)
@@ -132,7 +137,9 @@ public class ReservationService {
         applyRequest(reservation, request);
         Reservation saved = reservationRepository.save(reservation);
         recordHistory(saved, null, ReservationStatus.PENDING, "Reservation created");
-        return toResponse(saved);
+        ReservationResponse response = toResponse(saved);
+        webSocketEventPublisher.publishReservationEvent(WebSocketEvent.of("RESERVATION_CREATED", saved.getId(), saved.getReservationCode(), response));
+        return response;
     }
 
     @Transactional
@@ -144,7 +151,9 @@ public class ReservationService {
         reservation.setInternalNote(isBlank(internalNote) ? reservation.getInternalNote() : internalNote.trim());
         reservation.setConfirmedAt(Instant.now());
         changeStatus(reservation, ReservationStatus.CONFIRMED, "Reservation confirmed");
-        return toResponse(reservation);
+        ReservationResponse response = toResponse(reservation);
+        webSocketEventPublisher.publishReservationEvent(WebSocketEvent.of("RESERVATION_CONFIRMED", reservation.getId(), reservation.getReservationCode(), response));
+        return response;
     }
 
     @Transactional
@@ -218,7 +227,9 @@ public class ReservationService {
         reservation.setCheckedInAt(Instant.now());
         diningTable.setStatus(TableStatus.OCCUPIED);
         changeStatus(reservation, ReservationStatus.CHECKED_IN, "Reservation checked in");
-        return toResponse(reservation);
+        ReservationResponse response = toResponse(reservation);
+        webSocketEventPublisher.publishReservationEvent(WebSocketEvent.of("RESERVATION_CHECKED_IN", reservation.getId(), reservation.getReservationCode(), response));
+        return response;
     }
 
     @Transactional
@@ -230,7 +241,9 @@ public class ReservationService {
         reservation.setCompletedAt(Instant.now());
         releaseAssignedTableIfIdle(reservation);
         changeStatus(reservation, ReservationStatus.COMPLETED, "Reservation completed");
-        return toResponse(reservation);
+        ReservationResponse response = toResponse(reservation);
+        webSocketEventPublisher.publishReservationEvent(WebSocketEvent.of("RESERVATION_COMPLETED", reservation.getId(), reservation.getReservationCode(), response));
+        return response;
     }
 
     public Reservation findReservation(Long reservationId) {
@@ -319,6 +332,7 @@ public class ReservationService {
         }
         releaseAssignedTableIfIdle(reservation);
         changeStatus(reservation, ReservationStatus.CANCELLED, isBlank(note) ? "Reservation cancelled" : note.trim());
+        webSocketEventPublisher.publishReservationEvent(WebSocketEvent.of("RESERVATION_CANCELLED", reservation.getId(), reservation.getReservationCode(), null));
         return reservation;
     }
 

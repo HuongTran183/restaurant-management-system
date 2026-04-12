@@ -1,5 +1,7 @@
 package com.restaurant.management.reservation.scheduler;
 
+import com.restaurant.management.common.websocket.WebSocketEvent;
+import com.restaurant.management.common.websocket.WebSocketEventPublisher;
 import com.restaurant.management.floor.domain.TableSessionStatus;
 import com.restaurant.management.floor.domain.TableStatus;
 import com.restaurant.management.floor.repository.TableSessionRepository;
@@ -27,15 +29,18 @@ public class ReservationAutoExpireScheduler {
     private final ReservationRepository reservationRepository;
     private final ReservationHistoryRepository reservationHistoryRepository;
     private final TableSessionRepository tableSessionRepository;
+    private final WebSocketEventPublisher webSocketEventPublisher;
 
     public ReservationAutoExpireScheduler(
             ReservationRepository reservationRepository,
             ReservationHistoryRepository reservationHistoryRepository,
-            TableSessionRepository tableSessionRepository
+            TableSessionRepository tableSessionRepository,
+            WebSocketEventPublisher webSocketEventPublisher
     ) {
         this.reservationRepository = reservationRepository;
         this.reservationHistoryRepository = reservationHistoryRepository;
         this.tableSessionRepository = tableSessionRepository;
+        this.webSocketEventPublisher = webSocketEventPublisher;
     }
 
     @Scheduled(fixedRate = 60_000)
@@ -74,6 +79,7 @@ public class ReservationAutoExpireScheduler {
             reservationHistoryRepository.save(history);
 
             log.info("Auto-expired reservation {} (code={})", reservation.getId(), reservation.getReservationCode());
+            webSocketEventPublisher.publishReservationEvent(WebSocketEvent.of("RESERVATION_AUTO_CANCELLED", reservation.getId(), reservation.getReservationCode(), null));
         }
     }
 

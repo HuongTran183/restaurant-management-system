@@ -6,6 +6,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.restaurant.management.common.websocket.WebSocketEventPublisher;
 import com.restaurant.management.floor.domain.DiningTable;
 import com.restaurant.management.floor.domain.TableSessionStatus;
 import com.restaurant.management.floor.domain.TableStatus;
@@ -34,6 +35,7 @@ class ReservationServiceTest {
         TableSessionRepository tableSessionRepository = mock(TableSessionRepository.class);
         AreaRepository areaRepository = mock(AreaRepository.class);
         DiningTableRepository diningTableRepository = mock(DiningTableRepository.class);
+        WebSocketEventPublisher webSocketEventPublisher = mock(WebSocketEventPublisher.class);
 
         ReservationService service = new ReservationService(
                 reservationRepository,
@@ -41,7 +43,8 @@ class ReservationServiceTest {
                 diningTableService,
                 tableSessionRepository,
                 areaRepository,
-                diningTableRepository
+                diningTableRepository,
+                webSocketEventPublisher
         );
 
         Reservation reservation = new Reservation();
@@ -85,6 +88,7 @@ class ReservationServiceTest {
         TableSessionRepository tableSessionRepository = mock(TableSessionRepository.class);
         AreaRepository areaRepository = mock(AreaRepository.class);
         DiningTableRepository diningTableRepository = mock(DiningTableRepository.class);
+        WebSocketEventPublisher webSocketEventPublisher = mock(WebSocketEventPublisher.class);
 
         ReservationService service = new ReservationService(
                 reservationRepository,
@@ -92,7 +96,8 @@ class ReservationServiceTest {
                 diningTableService,
                 tableSessionRepository,
                 areaRepository,
-                diningTableRepository
+                diningTableRepository,
+                webSocketEventPublisher
         );
 
         DiningTable diningTable = new DiningTable();
