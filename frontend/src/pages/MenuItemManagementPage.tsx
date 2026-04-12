@@ -3,6 +3,7 @@ import type { ChangeEvent } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { ApiError, type AuthSession, type Category, type StaffMenuItem, staffApi } from '../lib/api';
+import { formatCurrencyVnd } from '../lib/currency';
 import { ErrorState, LoadingState } from './PagePrimitives';
 
 const DISH_PREVIEW_IMAGES = [
@@ -504,7 +505,7 @@ export function MenuItemManagementPage({
                         <span>{item.available ? 'Còn hàng' : 'Tạm hết'}</span>
                       </div>
                       <div className="mt-3 flex items-center justify-between label-text">
-                        <span>${item.price.toFixed(2)}</span>
+                        <span>{formatCurrencyVnd(item.price)}</span>
                         <span>{formatRelativeTime(item.updatedAt)}</span>
                       </div>
                     </button>
@@ -561,7 +562,7 @@ export function MenuItemManagementPage({
                           ))}
                         </select>
                       </FormField>
-                      <FormField label="Giá bán (USD)">
+                      <FormField label="Giá bán (VND)">
                         <input className="dish-field" min="0" onChange={(event) => setFormState((current) => ({ ...current, price: event.target.value }))} step="0.01" type="number" value={formState.price} />
                       </FormField>
                       <div className="col-span-2 space-y-2">
@@ -578,8 +579,8 @@ export function MenuItemManagementPage({
                       <div>
                         <label className="label-text mb-3 ml-1 block">Topping &amp; cộng thêm</label>
                         <div className="flex flex-wrap gap-2">
-                          <AddonPill label="Thêm nấm truffle" price="12" />
-                          <AddonPill label="Trứng cá muối" price="15" />
+                          <AddonPill label="Thêm nấm truffle" price={120000} />
+                          <AddonPill label="Trứng cá muối" price={150000} />
                           <button className="button-chip" disabled type="button">
                             <span className="material-symbols-outlined text-sm">add</span>
                             <span>Thêm nữa</span>
@@ -790,11 +791,11 @@ function AttributeChip({ active = false, icon, label }: { active?: boolean; icon
   );
 }
 
-function AddonPill({ label, price }: { label: string; price: string }) {
+function AddonPill({ label, price }: { label: string; price: number }) {
   return (
     <div className="flex items-center gap-2 rounded-full border border-slate/30 bg-white px-4 py-2">
       <span className="text-sm font-medium">{label}</span>
-      <span className="text-xs font-bold text-sun">+${price}</span>
+      <span className="text-xs font-bold text-sun">+{formatCurrencyVnd(price)}</span>
       <span className="material-symbols-outlined text-sm text-slate">close</span>
     </div>
   );

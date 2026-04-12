@@ -470,8 +470,14 @@ export function TableManagementPage({
                     </div>
                   </div>
 
-                  {canEditTables && (
-                    <div className="mt-4 flex gap-2 border-t border-ink/10 pt-3">
+                  <div className="mt-4 flex gap-2 border-t border-ink/10 pt-3">
+                    <Link
+                      className="flex-1 rounded px-3 py-1 text-center text-sm font-medium text-forest hover:bg-forest/10"
+                      to={`/staff/tables/${table.id}/qr`}
+                    >
+                      {t('QR')}
+                    </Link>
+                    {canEditTables ? (
                       <button
                         onClick={() => openEditForm(table)}
                         disabled={formMode !== null}
@@ -479,8 +485,8 @@ export function TableManagementPage({
                       >
                         {t('Edit')}
                       </button>
-                    </div>
-                  )}
+                    ) : null}
+                  </div>
                 </div>
               ))}
             </div>

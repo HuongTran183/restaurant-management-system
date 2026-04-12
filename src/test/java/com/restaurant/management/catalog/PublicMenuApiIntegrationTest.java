@@ -77,7 +77,7 @@ class PublicMenuApiIntegrationTest {
         menuItem.setCode(code);
         menuItem.setName(name);
         menuItem.setDescription("Test menu item " + code);
-        menuItem.setPrice(new BigDecimal("12.50"));
+        menuItem.setPrice(new BigDecimal("125000.00"));
         menuItem.setAvailable(available);
         menuItem.setActive(active);
         menuItem.setCategory(category);
