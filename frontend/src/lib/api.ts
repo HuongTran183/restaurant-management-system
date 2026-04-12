@@ -405,11 +405,11 @@ export const publicApi = {
     requestedArea?: string;
     selectedTableId?: number;
     note?: string;
-  }) =>
+  }, token?: string) =>
     request<Reservation>('/api/public/reservations', {
       method: 'POST',
       body: JSON.stringify(payload),
-    }),
+    }, token),
   getReservation: (code: string) => request<Reservation>(`/api/public/reservations/${code}`),
   rescheduleReservation: (code: string, payload: { phone: string; reservationTime: string }) =>
     request<Reservation>(`/api/public/reservations/${code}/reschedule`, {

@@ -109,7 +109,7 @@ export default function App() {
       <Route path="/menu/items/:menuItemId" element={<DishDetailPage />} />
       <Route path="/login" element={<CustomerLoginPage onSignedIn={updateSession} session={session} isSessionReady={isSessionReady} />} />
       <Route path="/register" element={<CustomerRegisterPage onSignedIn={updateSession} session={session} isSessionReady={isSessionReady} />} />
-      <Route path="/book" element={<ReservationPage />} />
+      <Route path="/book" element={<ReservationPage session={session} isSessionReady={isSessionReady} />} />
       <Route path="/book/manage" element={<ReservationManagementPage />} />
       <Route path="/qr/:token" element={<QrExperiencePage />} />
       <Route path="/staff/login" element={<StaffLoginPage onSignedIn={updateSession} session={session} isSessionReady={isSessionReady} />} />
