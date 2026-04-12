@@ -1,4 +1,5 @@
 import { ApiError, type MenuItem, type PublicMenu } from '../lib/api';
+import { formatCurrencyVnd } from '../lib/currency';
 import i18n from '../i18n/i18n';
 
 export function filterMenuItems(menu: PublicMenu | undefined, search: string) {
@@ -31,11 +32,7 @@ export function findMenuItemName(items: MenuItem[], menuItemId: number) {
 }
 
 export function formatMoney(value: number) {
-  return new Intl.NumberFormat('vi-VN', {
-    style: 'currency',
-    currency: 'USD',
-    maximumFractionDigits: 2,
-  }).format(Number(value));
+  return formatCurrencyVnd(value);
 }
 
 export function formatDateTime(value: string) {

@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import type { FormEvent, ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { Invoice, MenuItem, Order, OrderItemStatus, Payment, PaymentMethod } from '../lib/api';
+import { formatCurrencyVnd, formatEditableMoney } from '../lib/currency';
 
 const PAYMENT_METHOD_OPTIONS: PaymentMethod[] = ['CASH', 'CARD', 'BANK_TRANSFER', 'E_WALLET'];
 type Translate = ReturnType<typeof useTranslation>['t'];
@@ -139,7 +140,7 @@ export function CashierWorkbench({
       return {
         ...current,
         invoiceId: String(selectedInvoice.id),
-        amount: shouldReuseAmount ? current.amount : remaining.toFixed(2),
+        amount: shouldReuseAmount ? current.amount : formatEditableMoney(remaining),
       };
     });
   }, [openInvoices, showBillingOperations]);
@@ -152,7 +153,7 @@ export function CashierWorkbench({
 
     setPaymentForm({
       invoiceId: String(invoice.id),
-      amount: (invoice.totalAmount - invoice.paidAmount).toFixed(2),
+      amount: formatEditableMoney(invoice.totalAmount - invoice.paidAmount),
       method: 'CASH',
       note: '',
     });
@@ -817,11 +818,7 @@ function buildOrderTimeline(order: Order, invoice: Invoice | undefined, payments
 }
 
 function formatMoney(value: number) {
-  return new Intl.NumberFormat('vi-VN', {
-    style: 'currency',
-    currency: 'USD',
-    maximumFractionDigits: 2,
-  }).format(Number(value));
+  return formatCurrencyVnd(value);
 }
 
 function formatMoment(value: string | null) {

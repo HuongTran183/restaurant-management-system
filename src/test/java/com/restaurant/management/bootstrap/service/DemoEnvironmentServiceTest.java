@@ -106,7 +106,7 @@ class DemoEnvironmentServiceTest {
         assertThat(tableCaptor.getValue().getArea()).isSameAs(areaCaptor.getValue());
         assertThat(categoryCaptor.getValue().getCode()).isEqualTo("DEMO-FOOD");
         assertThat(menuItemCaptor.getValue().getCategory()).isSameAs(categoryCaptor.getValue());
-        assertThat(menuItemCaptor.getValue().getPrice()).isEqualByComparingTo(new BigDecimal("12.50"));
+        assertThat(menuItemCaptor.getValue().getPrice()).isEqualByComparingTo(new BigDecimal("125000.00"));
     }
 
     @Test
@@ -152,7 +152,7 @@ class DemoEnvironmentServiceTest {
         ReflectionTestUtils.setField(menuItem, "id", 4L);
         menuItem.setCode("PHO-DEMO");
         menuItem.setName("Pho Demo");
-        menuItem.setPrice(new BigDecimal("12.50"));
+        menuItem.setPrice(new BigDecimal("125000.00"));
         menuItem.setAvailable(true);
         menuItem.setActive(true);
         menuItem.setCategory(category);

@@ -34,7 +34,7 @@ public class DemoEnvironmentService {
     private static final String CATEGORY_DESCRIPTION = "Local demo menu category";
     private static final String MENU_ITEM_NAME = "Pho Demo";
     private static final String MENU_ITEM_DESCRIPTION = "Local demo menu item";
-    private static final BigDecimal MENU_ITEM_PRICE = new BigDecimal("12.50");
+    private static final BigDecimal MENU_ITEM_PRICE = new BigDecimal("125000.00");
     private static final String QR_LABEL = "Demo Table 01";
 
     private final AreaRepository areaRepository;

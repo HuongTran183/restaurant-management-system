@@ -106,6 +106,18 @@ export type QrTable = {
   qrExpiresAt: string | null;
 };
 
+export type TableQrCode = {
+  id: number;
+  diningTableId: number;
+  diningTableCode: string;
+  token: string;
+  label: string | null;
+  landingUrl: string;
+  imagePath: string | null;
+  expiresAt: string | null;
+  active: boolean;
+};
+
 export type OrderItem = {
   id: number;
   menuItemId: number;
@@ -671,7 +683,13 @@ export const staffApi = {
       {
         method: 'POST',
         body: JSON.stringify(payload),
-      },
+        },
+        token,
+      ),
+  getTable: (token: string, tableId: number) =>
+    request<DiningTable>(
+      `/api/tables/${tableId}`,
+      {},
       token,
     ),
   updateTable: (
@@ -684,6 +702,28 @@ export const staffApi = {
       {
         method: 'PUT',
         body: JSON.stringify(payload),
+      },
+      token,
+    ),
+  getTableQr: (token: string, tableId: number) =>
+    request<TableQrCode>(
+      `/api/tables/${tableId}/qr`,
+      {},
+      token,
+    ),
+  generateTableQr: (
+    token: string,
+    tableId: number,
+    payload: { label?: string; expiresAt?: string | null },
+  ) =>
+    request<TableQrCode>(
+      `/api/tables/${tableId}/qr`,
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          diningTableId: tableId,
+          ...payload,
+        }),
       },
       token,
     ),
@@ -836,7 +876,28 @@ export const staffApi = {
         status: params.status,
         query: params.query,
       })}`,
-      {},
+        {},
+        token,
+      ),
+  createReservation: (
+    token: string,
+    payload: {
+      customerName: string;
+      phone: string;
+      email?: string;
+      partySize: number;
+      reservationTime: string;
+      requestedArea?: string;
+      selectedTableId?: number;
+      note?: string;
+    },
+  ) =>
+    request<Reservation>(
+      '/api/reservations',
+      {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      },
       token,
     ),
   serviceRequests: (
@@ -851,7 +912,19 @@ export const staffApi = {
         requestType: params.requestType,
         query: params.query,
       })}`,
-      {},
+        {},
+        token,
+      ),
+  createServiceRequest: (
+    token: string,
+    payload: { tableSessionId?: number; orderId?: number; requestType: ServiceRequestType; note?: string },
+  ) =>
+    request<ServiceRequest>(
+      '/api/service-requests',
+      {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      },
       token,
     ),
   tables: (

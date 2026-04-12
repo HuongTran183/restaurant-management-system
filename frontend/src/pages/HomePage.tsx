@@ -12,6 +12,7 @@ export function HomePage() {
   const [search, setSearch] = useState('');
   const deferredSearch = useDeferredValue(search);
   const filteredItems = filterMenuItems(menuQuery.data, deferredSearch);
+  const tastingExperiencePrice = formatMoney(2_250_000);
 
   const featuredItems = useMemo(() => filteredItems.slice(0, 3), [filteredItems]);
 
@@ -171,7 +172,7 @@ export function HomePage() {
               <Link className="rounded-sm bg-sun px-8 py-3 text-sm uppercase tracking-[0.18em] text-white" to="/book">
                 {t('Reserve Experience')}
               </Link>
-              <p className="heading-2 text-cream">{t('$225 / guest')}</p>
+              <p className="heading-2 text-cream">{t('{{price}} / guest', { price: tastingExperiencePrice })}</p>
             </div>
           </div>
 

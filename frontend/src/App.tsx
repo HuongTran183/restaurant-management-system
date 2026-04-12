@@ -19,7 +19,10 @@ import { ReservationManagementPage } from './pages/ReservationManagementPage';
 import { ReservationPage } from './pages/ReservationPage';
 import { StaffDashboardPage } from './pages/StaffDashboardPage';
 import { StaffLoginPage } from './pages/StaffLoginPage';
+import { StaffReservationCreatePage } from './pages/StaffReservationCreatePage';
 import { StaffRegistrationPage } from './pages/StaffRegistrationPage';
+import { StaffServiceRequestCreatePage } from './pages/StaffServiceRequestCreatePage';
+import { StaffTableQrPage } from './pages/StaffTableQrPage';
 import { TableManagementPage } from './pages/TableManagementPage';
 import { UserManagementPage } from './pages/UserManagementPage';
 
@@ -148,6 +151,18 @@ export default function App() {
         }
       />
       <Route
+        path="/staff/tables/:tableId/qr"
+        element={
+          <ProtectedRoute session={session} isSessionReady={isSessionReady}>
+            <StaffTableQrPage
+              session={session}
+              onLogout={() => updateSession(null)}
+              onRefreshSession={refreshCurrentSession}
+            />
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/staff/users"
         element={
           <ProtectedRoute session={session} isSessionReady={isSessionReady}>
@@ -195,11 +210,45 @@ export default function App() {
           </ProtectedRoute>
         }
       />
+      <Route
+        path="/staff/reservations/new"
+        element={
+          <ProtectedRoute session={session} isSessionReady={isSessionReady}>
+            <StaffReservationCreatePage
+              session={session}
+              onLogout={() => updateSession(null)}
+              onRefreshSession={refreshCurrentSession}
+            />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/staff/service-requests/new"
+        element={
+          <ProtectedRoute session={session} isSessionReady={isSessionReady}>
+            <StaffServiceRequestCreatePage
+              session={session}
+              onLogout={() => updateSession(null)}
+              onRefreshSession={refreshCurrentSession}
+            />
+          </ProtectedRoute>
+        }
+      />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 
-  const isStandaloneRoute = location.pathname.startsWith('/book/manage') || location.pathname.startsWith('/menu/items/') || location.pathname.startsWith('/staff/categories') || location.pathname.startsWith('/staff/menu-items') || location.pathname.startsWith('/staff/areas') || location.pathname.startsWith('/staff/tables') || location.pathname.startsWith('/staff/users') || location.pathname.startsWith('/staff/customers');
+  const isStandaloneRoute =
+    location.pathname.startsWith('/book/manage')
+    || location.pathname.startsWith('/menu/items/')
+    || location.pathname.startsWith('/staff/categories')
+    || location.pathname.startsWith('/staff/menu-items')
+    || location.pathname.startsWith('/staff/areas')
+    || location.pathname.startsWith('/staff/tables')
+    || location.pathname.startsWith('/staff/users')
+    || location.pathname.startsWith('/staff/customers')
+    || location.pathname.startsWith('/staff/reservations/new')
+    || location.pathname.startsWith('/staff/service-requests/new');
   if (isStandaloneRoute) {
     return appRoutes;
   }

@@ -1,4 +1,5 @@
 import type { Order, Payment, Reservation } from './api';
+import { formatCurrencyVnd } from './currency';
 
 export type DashboardMetricTone = 'forest' | 'ember' | 'sun' | 'slate';
 
@@ -67,11 +68,7 @@ export function countKitchenItems(orders: Order[]) {
 }
 
 export function formatCurrency(value: number) {
-  return new Intl.NumberFormat('vi-VN', {
-    style: 'currency',
-    currency: 'USD',
-    maximumFractionDigits: 2,
-  }).format(value);
+  return formatCurrencyVnd(value);
 }
 
 export function formatPercent(value: number) {
