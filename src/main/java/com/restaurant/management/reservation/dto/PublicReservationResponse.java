@@ -1,5 +1,6 @@
 package com.restaurant.management.reservation.dto;
 
+import com.restaurant.management.floor.dto.PublicTableQrResponse;
 import com.restaurant.management.reservation.domain.ReservationStatus;
 import java.time.Instant;
 
@@ -20,6 +21,7 @@ public record PublicReservationResponse(
         Instant confirmedAt,
         Instant cancelledAt,
         Instant checkedInAt,
-        Instant completedAt
+        Instant completedAt,
+        PublicTableQrResponse tableQr
 ) {
 }

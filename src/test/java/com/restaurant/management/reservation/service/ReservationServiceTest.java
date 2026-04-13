@@ -14,6 +14,7 @@ import com.restaurant.management.floor.repository.AreaRepository;
 import com.restaurant.management.floor.repository.DiningTableRepository;
 import com.restaurant.management.floor.repository.TableSessionRepository;
 import com.restaurant.management.floor.service.DiningTableService;
+import com.restaurant.management.floor.service.TableQrService;
 import com.restaurant.management.reservation.domain.Reservation;
 import com.restaurant.management.reservation.domain.ReservationHistory;
 import com.restaurant.management.reservation.domain.ReservationStatus;
@@ -35,6 +36,7 @@ class ReservationServiceTest {
         TableSessionRepository tableSessionRepository = mock(TableSessionRepository.class);
         AreaRepository areaRepository = mock(AreaRepository.class);
         DiningTableRepository diningTableRepository = mock(DiningTableRepository.class);
+        TableQrService tableQrService = mock(TableQrService.class);
         WebSocketEventPublisher webSocketEventPublisher = mock(WebSocketEventPublisher.class);
 
         ReservationService service = new ReservationService(
@@ -44,6 +46,7 @@ class ReservationServiceTest {
                 tableSessionRepository,
                 areaRepository,
                 diningTableRepository,
+                tableQrService,
                 webSocketEventPublisher
         );
 
@@ -88,6 +91,7 @@ class ReservationServiceTest {
         TableSessionRepository tableSessionRepository = mock(TableSessionRepository.class);
         AreaRepository areaRepository = mock(AreaRepository.class);
         DiningTableRepository diningTableRepository = mock(DiningTableRepository.class);
+        TableQrService tableQrService = mock(TableQrService.class);
         WebSocketEventPublisher webSocketEventPublisher = mock(WebSocketEventPublisher.class);
 
         ReservationService service = new ReservationService(
@@ -97,6 +101,7 @@ class ReservationServiceTest {
                 tableSessionRepository,
                 areaRepository,
                 diningTableRepository,
+                tableQrService,
                 webSocketEventPublisher
         );
 

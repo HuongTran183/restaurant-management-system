@@ -739,6 +739,8 @@ function orderItemTone(status: OrderItemStatus): 'forest' | 'ember' | 'warm' | '
       return 'forest';
     case 'CANCELLED':
       return 'warm';
+    default:
+      return 'neutral';
   }
 }
 

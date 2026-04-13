@@ -641,6 +641,13 @@
   "✓ Password meets all requirements": "✓ Mật khẩu đáp ứng đầy đủ yêu cầu",
   "✓ Passwords match": "✓ Mật khẩu khớp nhau",
   "✓ Strong password": "✓ Mật khẩu mạnh",
+  "Manage bookings": "Quản lý đặt chỗ",
+  "No expiry": "Không có thời hạn",
+  "Open menu QR": "Mở menu gọi món",
+  "Ordering QR": "QR gọi món",
+  "Table {{table}} already has a staff-generated QR. Open the ordering page directly or scan this code on another device.": "Bàn {{table}} đã có QR do nhân viên tạo. Bạn có thể mở ngay trang gọi món hoặc quét mã này trên thiết bị khác.",
+  "Valid until {{time}}": "Hiệu lực đến {{time}}",
+  "Your table is ready for menu ordering.": "Bàn của bạn đã sẵn sàng để gọi món bằng QR.",
 
   "AVAILABLE": "Còn trống",
   "OCCUPIED": "Đang có khách",

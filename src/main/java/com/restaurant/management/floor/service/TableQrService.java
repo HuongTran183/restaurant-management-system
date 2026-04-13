@@ -13,6 +13,7 @@ import com.restaurant.management.common.storage.StoredObject;
 import com.restaurant.management.floor.domain.DiningTable;
 import com.restaurant.management.floor.domain.TableQr;
 import com.restaurant.management.floor.dto.GenerateTableQrRequest;
+import com.restaurant.management.floor.dto.PublicTableQrResponse;
 import com.restaurant.management.floor.dto.PublicQrTableResponse;
 import com.restaurant.management.floor.dto.TableQrResponse;
 import com.restaurant.management.floor.repository.TableQrRepository;
@@ -21,6 +22,7 @@ import java.io.IOException;
 import java.security.SecureRandom;
 import java.time.Instant;
 import java.util.Base64;
+import java.util.Optional;
 import javax.imageio.ImageIO;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -79,6 +81,16 @@ public class TableQrService {
     }
 
     @Transactional(readOnly = true)
+    public Optional<PublicTableQrResponse> findActivePublicByTable(Long diningTableId) {
+        Instant now = Instant.now();
+        return tableQrRepository.findByDiningTableId(diningTableId)
+                .filter(TableQr::isActive)
+                .filter(tableQr -> tableQr.getExpiresAt() == null || !tableQr.getExpiresAt().isBefore(now))
+                .filter(tableQr -> tableQr.getDiningTable() != null && tableQr.getDiningTable().isActive())
+                .map(this::toPublicResponse);
+    }
+
+    @Transactional(readOnly = true)
     public PublicQrTableResponse resolvePublic(String token) {
         TableQr tableQr = findActiveByToken(token);
         return new PublicQrTableResponse(
@@ -123,6 +135,15 @@ public class TableQrService {
                 tableQr.getImagePath(),
                 tableQr.getExpiresAt(),
                 tableQr.isActive()
+        );
+    }
+
+    private PublicTableQrResponse toPublicResponse(TableQr tableQr) {
+        return new PublicTableQrResponse(
+                tableQr.getToken(),
+                tableQr.getLabel(),
+                buildLandingUrl(tableQr.getToken()),
+                tableQr.getExpiresAt()
         );
     }
 

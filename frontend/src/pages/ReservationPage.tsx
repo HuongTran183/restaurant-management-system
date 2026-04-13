@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import { ReservationTableQrCard } from '../components/public-booking/ReservationTableQrCard';
 import { TableSelectionStep } from '../components/public-booking/TableSelectionStep';
 import type { AuthSession } from '../lib/api';
 import { publicApi } from '../lib/api';
@@ -84,7 +85,10 @@ export function ReservationPage({ session, isSessionReady }: { session: AuthSess
               {t('Chọn thời gian, khu vực và bàn phù hợp trước khi đến nhà hàng.')}
             </p>
           </div>
-          <div className="flex flex-wrap gap-2 text-xs text-slate-500">
+          <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
+            <Link className="button-secondary rounded-md text-sm" to="/book/manage">
+              {t('Manage bookings')}
+            </Link>
             <span className="rounded-full border border-slate-200 px-3 py-1">{t('Xem bàn trống theo thời gian thực')}</span>
             <span className="rounded-full border border-slate-200 px-3 py-1">{t('Giữ chỗ trước khi đến')}</span>
           </div>
@@ -211,6 +215,7 @@ export function ReservationPage({ session, isSessionReady }: { session: AuthSess
               <ReservationDetail label={t('Requested area')} value={lookupQuery.data.requestedArea || t('No preference')} />
               <ReservationDetail label={t('Assigned table')} value={lookupQuery.data.assignedTableName || t('Unassigned')} />
             </div>
+            <ReservationTableQrCard reservation={lookupQuery.data} />
             <label className="block">
               <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">{t('Cancel note')}</span>
               <textarea className="field min-h-24 rounded-md" onChange={(event) => setCancelNote(event.target.value)} value={cancelNote} />

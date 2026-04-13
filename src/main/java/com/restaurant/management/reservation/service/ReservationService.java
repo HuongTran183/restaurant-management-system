@@ -9,10 +9,12 @@ import com.restaurant.management.floor.domain.Area;
 import com.restaurant.management.floor.domain.DiningTable;
 import com.restaurant.management.floor.domain.TableSessionStatus;
 import com.restaurant.management.floor.domain.TableStatus;
+import com.restaurant.management.floor.dto.PublicTableQrResponse;
 import com.restaurant.management.floor.repository.AreaRepository;
 import com.restaurant.management.floor.repository.DiningTableRepository;
 import com.restaurant.management.floor.repository.TableSessionRepository;
 import com.restaurant.management.floor.service.DiningTableService;
+import com.restaurant.management.floor.service.TableQrService;
 import com.restaurant.management.reservation.domain.Reservation;
 import com.restaurant.management.reservation.domain.ReservationHistory;
 import com.restaurant.management.reservation.domain.ReservationStatus;
@@ -51,6 +53,7 @@ public class ReservationService {
     private final TableSessionRepository tableSessionRepository;
     private final AreaRepository areaRepository;
     private final DiningTableRepository diningTableRepository;
+    private final TableQrService tableQrService;
     private final WebSocketEventPublisher webSocketEventPublisher;
     private final SecureRandom secureRandom = new SecureRandom();
 
@@ -61,6 +64,7 @@ public class ReservationService {
             TableSessionRepository tableSessionRepository,
             AreaRepository areaRepository,
             DiningTableRepository diningTableRepository,
+            TableQrService tableQrService,
             WebSocketEventPublisher webSocketEventPublisher
     ) {
         this.reservationRepository = reservationRepository;
@@ -69,6 +73,7 @@ public class ReservationService {
         this.tableSessionRepository = tableSessionRepository;
         this.areaRepository = areaRepository;
         this.diningTableRepository = diningTableRepository;
+        this.tableQrService = tableQrService;
         this.webSocketEventPublisher = webSocketEventPublisher;
     }
 
@@ -470,6 +475,7 @@ public class ReservationService {
     }
 
     private PublicReservationResponse toPublicResponse(Reservation reservation) {
+        PublicTableQrResponse tableQr = resolvePublicTableQr(reservation);
         return new PublicReservationResponse(
                 reservation.getId(),
                 reservation.getReservationCode(),
@@ -487,8 +493,17 @@ public class ReservationService {
                 reservation.getConfirmedAt(),
                 reservation.getCancelledAt(),
                 reservation.getCheckedInAt(),
-                reservation.getCompletedAt()
+                reservation.getCompletedAt(),
+                tableQr
         );
+    }
+
+    private PublicTableQrResponse resolvePublicTableQr(Reservation reservation) {
+        if (reservation.getStatus() != ReservationStatus.COMPLETED || reservation.getAssignedTable() == null) {
+            return null;
+        }
+
+        return tableQrService.findActivePublicByTable(reservation.getAssignedTable().getId()).orElse(null);
     }
 
     private String nextCode() {

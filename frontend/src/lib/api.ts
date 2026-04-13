@@ -184,6 +184,14 @@ export type Reservation = {
   cancelledAt: string | null;
   checkedInAt: string | null;
   completedAt: string | null;
+  tableQr?: ReservationTableQr | null;
+};
+
+export type ReservationTableQr = {
+  token: string;
+  label: string;
+  landingUrl: string;
+  expiresAt: string | null;
 };
 
 export type ServiceRequest = {

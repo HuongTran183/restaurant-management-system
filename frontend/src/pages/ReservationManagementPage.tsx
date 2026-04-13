@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
+import { ReservationTableQrCard } from '../components/public-booking/ReservationTableQrCard';
 import type { Reservation } from '../lib/api';
 import { publicApi } from '../lib/api';
 import { formatDateTime } from './pageUtils';
@@ -351,6 +352,8 @@ export function ReservationManagementPage() {
             </div>
 
             <div className="grid gap-4">
+              <ReservationTableQrCard reservation={reservation} />
+
               <article className="rounded-lg border border-slate-200 bg-white p-6">
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Thay đổi lịch hẹn</p>
                 <h3 className="mt-3 text-xl font-bold tracking-tight text-slate-900">Cập nhật ngày và khung giờ</h3>
