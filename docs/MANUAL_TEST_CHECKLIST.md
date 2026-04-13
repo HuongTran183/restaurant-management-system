@@ -18,7 +18,9 @@
 
 ## Feature 1 — Auth-Gated Reservation (CUSTOMER only)
 
-Mục tiêu: Chỉ user có role `CUSTOMER` mới tạo được reservation. ADMIN/MANAGER/WAITER bị từ chối `403`.
+Mục tiêu: Hệ thống có **2 luồng** tạo reservation:
+- **Public** (`POST /api/public/reservations`): Chỉ `CUSTOMER` — `@PreAuthorize("hasRole('CUSTOMER')")`
+- **Staff** (`POST /api/reservations`): Chỉ `ADMIN/MANAGER/WAITER` — `@PreAuthorize("hasAnyRole('ADMIN','MANAGER','WAITER')")`
 
 ### Preconditions
 - Có tài khoản CUSTOMER (ví dụ: `customer1/customer123`)
@@ -28,11 +30,13 @@ Mục tiêu: Chỉ user có role `CUSTOMER` mới tạo được reservation. AD
 
 | # | Mô tả | Bước thực hiện | Kết quả mong đợi | Pass? |
 |---|--------|----------------|-------------------|-------|
-| 1.1 | CUSTOMER tạo reservation thành công | 1. Đăng nhập bằng `customer1/customer123`<br>2. Vào trang Reservation<br>3. Điền thông tin (ngày, giờ, số khách)<br>4. Nhấn "Đặt bàn" | Reservation được tạo thành công, trạng thái PENDING | ☐ |
-| 1.2 | ADMIN bị từ chối tạo reservation | 1. Đăng nhập bằng `admin/admin123`<br>2. Gọi API `POST /api/reservations` (qua Postman hoặc DevTools)<br>3. Gửi body hợp lệ | Response `403 Forbidden` | ☐ |
-| 1.3 | WAITER bị từ chối tạo reservation | 1. Đăng nhập bằng `waiter1/waiter123`<br>2. Gọi API `POST /api/reservations`<br>3. Gửi body hợp lệ | Response `403 Forbidden` | ☐ |
-| 1.4 | Unauthenticated user bị từ chối | 1. Không đăng nhập (không có token)<br>2. Gọi API `POST /api/reservations` | Response `401 Unauthorized` | ☐ |
-| 1.5 | ADMIN vẫn xem/confirm/cancel reservation được | 1. Đăng nhập `admin/admin123`<br>2. `GET /api/staff/reservations` — xem danh sách<br>3. `POST /api/staff/reservations/{id}/confirm` — confirm | 200 OK cho cả hai | ☐ |
+| 1.1 | CUSTOMER tạo reservation qua public endpoint | 1. Đăng nhập bằng `customer1/customer123`<br>2. Vào trang Reservation (/book)<br>3. Điền thông tin (ngày, giờ, số khách)<br>4. Nhấn "Đặt bàn" | `POST /api/public/reservations` → 200, trạng thái PENDING | ☐ |
+| 1.2 | ADMIN bị từ chối trên public endpoint | 1. Đăng nhập bằng `admin/admin123`<br>2. Gọi API `POST /api/public/reservations` (Postman)<br>3. Gửi body hợp lệ | Response `403 Forbidden` (không có role CUSTOMER) | ☐ |
+| 1.3 | WAITER bị từ chối trên public endpoint | 1. Đăng nhập bằng `waiter1/waiter123`<br>2. Gọi API `POST /api/public/reservations`<br>3. Gửi body hợp lệ | Response `403 Forbidden` | ☐ |
+| 1.4 | Unauthenticated user bị từ chối | 1. Không đăng nhập (không có token)<br>2. Gọi API `POST /api/public/reservations` | Response `401 Unauthorized` | ☐ |
+| 1.5 | Staff tạo reservation qua staff endpoint | 1. Đăng nhập `admin/admin123`<br>2. Vào Staff Dashboard → New Reservation<br>3. Điền thông tin, nhấn Create | `POST /api/reservations` → 200, tạo thành công | ☐ |
+| 1.6 | CUSTOMER bị từ chối trên staff endpoint | 1. Đăng nhập `customer1/customer123`<br>2. Gọi API `POST /api/reservations` (Postman) | Response `403 Forbidden` | ☐ |
+| 1.7 | Staff xem/confirm/cancel reservation | 1. Đăng nhập `admin/admin123`<br>2. `GET /api/reservations` — xem danh sách<br>3. `POST /api/reservations/{id}/confirm` — confirm | 200 OK cho cả hai | ☐ |
 
 ---
 
