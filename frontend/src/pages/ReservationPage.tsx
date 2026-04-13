@@ -2,7 +2,9 @@ import type { FormEvent } from 'react';
 import { useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 import { TableSelectionStep } from '../components/public-booking/TableSelectionStep';
+import type { AuthSession } from '../lib/api';
 import { publicApi } from '../lib/api';
 import { Field, InlineError, StatusPill } from './PagePrimitives';
 import { formatDateTime, nextReservationSlot } from './pageUtils';
@@ -16,8 +18,10 @@ function ReservationDetail({ label, value }: { label: string; value: string }) {
   );
 }
 
-export function ReservationPage() {
+export function ReservationPage({ session, isSessionReady }: { session: AuthSession | null; isSessionReady: boolean }) {
   const { t } = useTranslation();
+  const isCustomer = session?.user?.roles?.includes('CUSTOMER') ?? false;
+  const isLoggedIn = !!session;
   const [form, setForm] = useState({
     customerName: '',
     phone: '',
@@ -43,7 +47,7 @@ export function ReservationPage() {
         requestedArea: form.requestedArea || undefined,
         selectedTableId: form.selectedTableId ? Number(form.selectedTableId) : undefined,
         note: form.note || undefined,
-      }),
+      }, session?.accessToken),
     onSuccess: (reservation) => {
       setActiveLookup(reservation.reservationCode);
       setLookupInput(reservation.reservationCode);
@@ -86,6 +90,27 @@ export function ReservationPage() {
           </div>
         </div>
 
+        {!isSessionReady ? (
+          <div className="mt-6 rounded-md border border-slate-200 bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">
+            {t('Đang tải...')}
+          </div>
+        ) : !isLoggedIn ? (
+          <div className="mt-6 rounded-md border border-amber-200 bg-amber-50 px-4 py-6 text-center">
+            <p className="text-sm font-medium text-amber-800">{t('Bạn cần đăng nhập để đặt bàn.')}</p>
+            <div className="mt-3 flex items-center justify-center gap-3">
+              <Link to="/login" className="button-primary rounded-md text-sm">
+                {t('Đăng nhập')}
+              </Link>
+              <Link to="/register" className="button-secondary rounded-md text-sm">
+                {t('Đăng ký tài khoản')}
+              </Link>
+            </div>
+          </div>
+        ) : !isCustomer ? (
+          <div className="mt-6 rounded-md border border-rose-200 bg-rose-50 px-4 py-6 text-center">
+            <p className="text-sm font-medium text-rose-800">{t('Chỉ tài khoản khách hàng mới có thể đặt bàn. Tài khoản quản trị và nhân viên không được phép đặt bàn qua kênh này.')}</p>
+          </div>
+        ) : (
         <form className="mt-6 grid gap-4 md:grid-cols-2" onSubmit={submitReservation}>
           <Field label={t('Guest name')}>
             <input className="field rounded-md" onChange={(event) => setForm({ ...form, customerName: event.target.value })} required value={form.customerName} />
@@ -123,6 +148,7 @@ export function ReservationPage() {
             {createReservationMutation.error ? <InlineError error={createReservationMutation.error} /> : null}
           </div>
         </form>
+        )}
       </section>
 
       <section className="rounded-lg border border-slate-200 bg-white px-5 py-6 sm:px-6">

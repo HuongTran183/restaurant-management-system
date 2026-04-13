@@ -17,12 +17,15 @@ import { MenuItemManagementPage } from './pages/MenuItemManagementPage';
 import { QrExperiencePage } from './pages/QrExperiencePage';
 import { ReservationManagementPage } from './pages/ReservationManagementPage';
 import { ReservationPage } from './pages/ReservationPage';
-import { StaffLoginPage } from './pages/StaffLoginPage';
 import { StaffDashboardPage } from './pages/StaffDashboardPage';
+import { StaffLoginPage } from './pages/StaffLoginPage';
+import { StaffReservationCreatePage } from './pages/StaffReservationCreatePage';
 import { StaffRegistrationPage } from './pages/StaffRegistrationPage';
+import { StaffServiceRequestCreatePage } from './pages/StaffServiceRequestCreatePage';
+import { StaffTableQrPage } from './pages/StaffTableQrPage';
+import { KitchenDisplayPage } from './pages/KitchenDisplayPage';
 import { TableManagementPage } from './pages/TableManagementPage';
 import { UserManagementPage } from './pages/UserManagementPage';
-
 
 const initialSession = typeof window === 'undefined' ? null : readSession();
 
@@ -107,7 +110,7 @@ export default function App() {
       <Route path="/menu/items/:menuItemId" element={<DishDetailPage />} />
       <Route path="/login" element={<CustomerLoginPage onSignedIn={updateSession} session={session} isSessionReady={isSessionReady} />} />
       <Route path="/register" element={<CustomerRegisterPage onSignedIn={updateSession} session={session} isSessionReady={isSessionReady} />} />
-      <Route path="/book" element={<ReservationPage />} />
+      <Route path="/book" element={<ReservationPage session={session} isSessionReady={isSessionReady} />} />
       <Route path="/book/manage" element={<ReservationManagementPage />} />
       <Route path="/qr/:token" element={<QrExperiencePage />} />
       <Route path="/staff/login" element={<StaffLoginPage onSignedIn={updateSession} session={session} isSessionReady={isSessionReady} />} />
@@ -141,6 +144,18 @@ export default function App() {
         element={
           <ProtectedRoute session={session} isSessionReady={isSessionReady}>
             <TableManagementPage
+              session={session}
+              onLogout={() => updateSession(null)}
+              onRefreshSession={refreshCurrentSession}
+            />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/staff/tables/:tableId/qr"
+        element={
+          <ProtectedRoute session={session} isSessionReady={isSessionReady}>
+            <StaffTableQrPage
               session={session}
               onLogout={() => updateSession(null)}
               onRefreshSession={refreshCurrentSession}
@@ -196,7 +211,42 @@ export default function App() {
           </ProtectedRoute>
         }
       />
-
+      <Route
+        path="/staff/reservations/new"
+        element={
+          <ProtectedRoute session={session} isSessionReady={isSessionReady}>
+            <StaffReservationCreatePage
+              session={session}
+              onLogout={() => updateSession(null)}
+              onRefreshSession={refreshCurrentSession}
+            />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/staff/service-requests/new"
+        element={
+          <ProtectedRoute session={session} isSessionReady={isSessionReady}>
+            <StaffServiceRequestCreatePage
+              session={session}
+              onLogout={() => updateSession(null)}
+              onRefreshSession={refreshCurrentSession}
+            />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/staff/kitchen"
+        element={
+          <ProtectedRoute session={session} isSessionReady={isSessionReady}>
+            <KitchenDisplayPage
+              session={session}
+              onLogout={() => updateSession(null)}
+              onRefreshSession={refreshCurrentSession}
+            />
+          </ProtectedRoute>
+        }
+      />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
@@ -209,15 +259,28 @@ export default function App() {
     || location.pathname.startsWith('/staff/areas')
     || location.pathname.startsWith('/staff/tables')
     || location.pathname.startsWith('/staff/users')
-    || location.pathname.startsWith('/staff/customers');
+    || location.pathname.startsWith('/staff/customers')
+    || location.pathname.startsWith('/staff/reservations/new')
+    || location.pathname.startsWith('/staff/service-requests/new')
+    || location.pathname.startsWith('/staff/kitchen');
   if (isStandaloneRoute) {
     return appRoutes;
   }
 
   return (
-    <div className="flex flex-col min-h-screen">
-      <header className="border-b border-ink/10 bg-white">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-mesh text-ink">
+      <header className="sticky top-0 z-30 border-b border-ink/10 bg-cream/80 backdrop-blur">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
+          <Link to="/" className="flex items-center gap-3">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-forest text-sm font-bold uppercase tracking-[0.24em] text-cream">
+              RMS
+            </div>
+            <div>
+              <p className="font-display text-2xl leading-none">Restaurant OS</p>
+              <p className="text-sm text-slate">{t('POS, QR dining, and booking in one orbit')}</p>
+            </div>
+          </Link>
+
           <div className="flex items-center gap-4">
             <nav className="hidden items-center gap-2 md:flex">
               <TopNavLink to="/menu">{t('Menu')}</TopNavLink>
@@ -248,7 +311,8 @@ export default function App() {
           </div>
         </div>
       </header>
-      <main className="mx-auto flex max-w-7xl flex-col gap-8 px-4 py-6 sm:px-6 lg:px-8 flex-1">
+
+      <main className="mx-auto flex max-w-7xl flex-col gap-8 px-4 py-6 sm:px-6 lg:px-8">
         {appRoutes}
       </main>
     </div>

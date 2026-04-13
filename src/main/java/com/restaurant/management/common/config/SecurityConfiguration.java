@@ -6,6 +6,7 @@ import com.restaurant.management.common.security.ProblemAccessDeniedHandler;
 import com.restaurant.management.common.security.ProblemAuthenticationEntryPoint;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -41,8 +42,10 @@ public class SecurityConfiguration {
                                 "/actuator/health",
                                 "/api/auth/login",
                                 "/api/auth/refresh",
-                                "/api/public/**"
+                                "/ws/**"
                         ).permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/public/reservations").authenticated()
+                        .requestMatchers("/api/public/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .exceptionHandling(exceptions -> exceptions

@@ -147,10 +147,23 @@ export type Order = {
   items: OrderItem[];
 };
 
-export type OrderItemStatus = 'NEW' | 'CONFIRMED' | 'CANCELLED';
+export type OrderItemStatus = 'NEW' | 'CONFIRMED' | 'PREPARING' | 'READY' | 'SERVED' | 'CANCELLED';
 export type OrderStatus = 'DRAFT' | 'CONFIRMED' | 'COMPLETED' | 'CANCELLED';
 export type OrderSourceChannel = 'STAFF' | 'QR';
 export type OrderType = 'DINE_IN' | 'TAKEAWAY' | 'DELIVERY';
+
+export type KitchenItem = {
+  id: number;
+  orderId: number;
+  orderCode: string;
+  tableSessionId: number | null;
+  menuItemId: number;
+  itemName: string;
+  quantity: number;
+  note: string | null;
+  status: OrderItemStatus;
+  createdAt: string;
+};
 
 export type Reservation = {
   id: number;
@@ -405,11 +418,11 @@ export const publicApi = {
     requestedArea?: string;
     selectedTableId?: number;
     note?: string;
-  }) =>
+  }, token?: string) =>
     request<Reservation>('/api/public/reservations', {
       method: 'POST',
       body: JSON.stringify(payload),
-    }),
+    }, token),
   getReservation: (code: string) => request<Reservation>(`/api/public/reservations/${code}`),
   rescheduleReservation: (code: string, payload: { phone: string; reservationTime: string }) =>
     request<Reservation>(`/api/public/reservations/${code}/reschedule`, {
@@ -1016,6 +1029,26 @@ export const staffApi = {
       {
         method: 'POST',
       },
+      token,
+    ),
+  kitchenQueue: (token: string) =>
+    request<KitchenItem[]>('/api/kitchen/queue', {}, token),
+  kitchenStartPreparing: (token: string, itemId: number) =>
+    request<KitchenItem>(
+      `/api/kitchen/items/${itemId}/prepare`,
+      { method: 'POST' },
+      token,
+    ),
+  kitchenMarkReady: (token: string, itemId: number) =>
+    request<KitchenItem>(
+      `/api/kitchen/items/${itemId}/ready`,
+      { method: 'POST' },
+      token,
+    ),
+  kitchenMarkServed: (token: string, itemId: number) =>
+    request<KitchenItem>(
+      `/api/kitchen/items/${itemId}/served`,
+      { method: 'POST' },
       token,
     ),
 };
