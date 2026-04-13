@@ -737,6 +737,12 @@ function orderItemTone(status: OrderItemStatus): 'forest' | 'ember' | 'warm' | '
       return 'ember';
     case 'CONFIRMED':
       return 'forest';
+    case 'PREPARING':
+      return 'ember';
+    case 'READY':
+      return 'forest';
+    case 'SERVED':
+      return 'neutral';
     case 'CANCELLED':
       return 'warm';
   }

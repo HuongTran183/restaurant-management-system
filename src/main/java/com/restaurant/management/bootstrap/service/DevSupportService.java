@@ -176,6 +176,7 @@ public class DevSupportService {
     private DemoEnvironmentService.DemoEnvironmentSnapshot baselineInternal() {
         clearTransientData();
         identityBootstrapService.ensureBootstrapIdentity();
+        identityBootstrapService.ensureRegressionUsers();
         return demoEnvironmentService.ensureBaseline();
     }
 

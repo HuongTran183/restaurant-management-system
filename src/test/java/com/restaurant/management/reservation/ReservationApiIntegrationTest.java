@@ -63,8 +63,10 @@ class ReservationApiIntegrationTest {
     void shouldCreateConfirmAndCheckInReservationAcrossPublicAndStaffApis() throws Exception {
         DiningTable diningTable = seedDiningTable();
         String reservationTime = Instant.now().plusSeconds(7_200).toString();
+        String customerToken = registerCustomerAndGetToken("customer_r1");
 
         MvcResult createReservationResult = mockMvc.perform(post("/api/public/reservations")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + customerToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -135,8 +137,10 @@ class ReservationApiIntegrationTest {
     @Test
     void shouldKeepInternalNotesPrivateWhenGuestCancelsReservation() throws Exception {
         String reservationTime = Instant.now().plusSeconds(5_400).toString();
+        String customerToken = registerCustomerAndGetToken("customer_r2");
 
         MvcResult createReservationResult = mockMvc.perform(post("/api/public/reservations")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + customerToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -200,6 +204,25 @@ class ReservationApiIntegrationTest {
 
         JsonNode loginJson = objectMapper.readTree(loginResult.getResponse().getContentAsString());
         return loginJson.path("accessToken").asText();
+    }
+
+    private String registerCustomerAndGetToken(String suffix) throws Exception {
+        MvcResult registerResult = mockMvc.perform(post("/api/public/auth/register/customer")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "username": "%s_%s",
+                                  "password": "Customer@123",
+                                  "fullName": "Test Customer %s",
+                                  "email": "%s_%s@test.local",
+                                  "phone": "0900000000"
+                                }
+                                """.formatted(suffix, System.nanoTime(), suffix, suffix, System.nanoTime())))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        JsonNode json = objectMapper.readTree(registerResult.getResponse().getContentAsString());
+        return json.path("accessToken").asText();
     }
 
     private DiningTable seedDiningTable() {

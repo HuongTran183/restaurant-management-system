@@ -58,3 +58,6 @@ build/
 
 ### VS Code ###
 .vscode/
+.kiro
+frontend2
+docs

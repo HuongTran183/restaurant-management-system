@@ -53,7 +53,7 @@ Mục tiêu: Reservation trạng thái CONFIRMED mà quá giờ đặt bàn 15 p
 | # | Mô tả | Bước thực hiện | Kết quả mong đợi | Pass? |
 |---|--------|----------------|-------------------|-------|
 | 2.1 | Reservation CONFIRMED quá hạn bị auto-cancel | 1. Tạo reservation với `reservationTime` = now - 20 phút (qua API/DB)<br>2. Confirm reservation (`POST .../confirm`)<br>3. Đợi tối đa 60s cho scheduler chạy<br>4. Kiểm tra trạng thái reservation | Trạng thái = `CANCELLED`, lý do auto-cancel | ☐ |
-| 2.2 | Reservation PENDING không bị auto-cancel | 1. Tạo reservation với `reservationTime` = now - 20 phút<br>2. **Không** confirm (giữ PENDING)<br>3. Đợi 60s | Trạng thái vẫn = `PENDING` | ☐ |
+| 2.2 | Reservation PENDING quá hạn cũng bị auto-cancel | 1. Tạo reservation với `reservationTime` = now - 20 phút (qua DB)<br>2. **Không** confirm (giữ PENDING)<br>3. Đợi 60s cho scheduler | Trạng thái = `CANCELLED` (scheduler xử lý cả PENDING lẫn CONFIRMED quá hạn) | ☐ |
 | 2.3 | Reservation CONFIRMED chưa quá hạn không bị cancel | 1. Tạo reservation với `reservationTime` = now + 30 phút<br>2. Confirm reservation<br>3. Đợi 60s | Trạng thái vẫn = `CONFIRMED` | ☐ |
 | 2.4 | Reservation đã CHECK_IN không bị cancel | 1. Tạo + confirm + check-in reservation (thời gian quá khứ)<br>2. Đợi 60s | Trạng thái vẫn = `CHECKED_IN` | ☐ |
 

@@ -203,7 +203,16 @@ Invoke-RestMethod -Method Post -Uri http://127.0.0.1:18080/api/dev/reset -Header
 Invoke-RestMethod -Method Post -Uri http://127.0.0.1:18080/api/dev/scenarios/pending-bill -Headers $headers
 ```
 
+Workbook-compatible regression users are also ensured by the dev-support scenarios in `local` and `test`:
+- `admin01 / Admin@123`
+- `manager01 / Manager@123`
+- `waiter01 / Waiter@123`
+- `cashier01 / Cashier@123`
+
 ## Testing
+
+Structured testing workflow, RTM baseline, and report templates:
+- [docs/testing/README.md](docs/testing/README.md)
 
 ### Backend unit + integration tests
 
@@ -212,7 +221,7 @@ Invoke-RestMethod -Method Post -Uri http://127.0.0.1:18080/api/dev/scenarios/pen
 ```
 
 Current expected result:
-- `29` tests
+- `35` tests
 - `0` failures
 - `0` skipped when Docker is available
 

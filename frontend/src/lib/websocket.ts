@@ -71,7 +71,9 @@ export function useWebSocket(
 }
 
 export function useKitchenWebSocket(onEvent: (event: WebSocketEvent) => void, enabled = true) {
-  const stableCallback = useCallback(onEvent, []);
+  const callbackRef = useRef(onEvent);
+  callbackRef.current = onEvent;
+  const stableCallback = useCallback((e: WebSocketEvent) => callbackRef.current(e), []);
   const subscriptions: Subscription[] = [
     { topic: '/topic/kitchen', callback: stableCallback },
     { topic: '/topic/orders', callback: stableCallback },
@@ -80,7 +82,9 @@ export function useKitchenWebSocket(onEvent: (event: WebSocketEvent) => void, en
 }
 
 export function useDashboardWebSocket(onEvent: (event: WebSocketEvent) => void, enabled = true) {
-  const stableCallback = useCallback(onEvent, []);
+  const callbackRef = useRef(onEvent);
+  callbackRef.current = onEvent;
+  const stableCallback = useCallback((e: WebSocketEvent) => callbackRef.current(e), []);
   const subscriptions: Subscription[] = [
     { topic: '/topic/orders', callback: stableCallback },
     { topic: '/topic/reservations', callback: stableCallback },

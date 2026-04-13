@@ -9,10 +9,13 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.restaurant.management.billing.repository.InvoiceRepository;
 import com.restaurant.management.billing.repository.PaymentRepository;
+import com.restaurant.management.identity.repository.LoginHistoryRepository;
+import com.restaurant.management.identity.repository.UserAccountRepository;
 import com.restaurant.management.ordering.repository.OrderRepository;
 import com.restaurant.management.ordering.repository.ServiceRequestRepository;
-import com.restaurant.management.reservation.repository.ReservationRepository;
 import com.restaurant.management.floor.repository.TableSessionRepository;
+import com.restaurant.management.reservation.repository.ReservationRepository;
+import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -70,6 +73,12 @@ class DevSupportApiIntegrationTest {
 
     @Autowired
     private ReservationRepository reservationRepository;
+
+    @Autowired
+    private UserAccountRepository userAccountRepository;
+
+    @Autowired
+    private LoginHistoryRepository loginHistoryRepository;
 
     @Test
     void shouldResetAndRebuildDeterministicScenarios() throws Exception {
@@ -167,19 +176,44 @@ class DevSupportApiIntegrationTest {
                 .andExpect(status().isUnauthorized());
     }
 
+    @Test
+    void shouldSeedWorkbookCompatibleRegressionUsersDuringBaselineScenario() throws Exception {
+        String accessToken = loginAsSeedAdmin();
+
+        mockMvc.perform(post("/api/dev/scenarios/baseline")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+                .andExpect(status().isOk());
+
+        assertThat(userAccountRepository.existsByUsernameIgnoreCase("admin01")).isTrue();
+        assertThat(userAccountRepository.existsByUsernameIgnoreCase("manager01")).isTrue();
+        assertThat(userAccountRepository.existsByUsernameIgnoreCase("waiter01")).isTrue();
+        assertThat(userAccountRepository.existsByUsernameIgnoreCase("cashier01")).isTrue();
+
+        login("admin01", "Admin@123");
+        login("manager01", "Manager@123");
+        login("waiter01", "Waiter@123");
+        login("cashier01", "Cashier@123");
+
+        assertThat(loginHistoryRepository.findAll().stream().map(history -> history.getUsernameSnapshot()).collect(java.util.stream.Collectors.toSet()))
+                .containsAll(Set.of("admin01", "manager01", "waiter01", "cashier01"));
+    }
+
     private String loginAsSeedAdmin() throws Exception {
+        return login("admin", "Admin@123456").path("accessToken").asText();
+    }
+
+    private JsonNode login(String username, String password) throws Exception {
         MvcResult loginResult = mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
-                                  \"username\": \"admin\",
-                                  \"password\": \"Admin@123456\"
+                                  \"username\": \"%s\",
+                                  \"password\": \"%s\"
                                 }
-                                """))
+                                """.formatted(username, password)))
                 .andExpect(status().isOk())
                 .andReturn();
 
-        JsonNode loginJson = objectMapper.readTree(loginResult.getResponse().getContentAsString());
-        return loginJson.path("accessToken").asText();
+        return objectMapper.readTree(loginResult.getResponse().getContentAsString());
     }
 }

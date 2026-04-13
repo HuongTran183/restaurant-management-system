@@ -6,6 +6,7 @@ import com.restaurant.management.identity.domain.RoleCode;
 import com.restaurant.management.identity.domain.UserAccount;
 import com.restaurant.management.identity.repository.RoleRepository;
 import com.restaurant.management.identity.repository.UserAccountRepository;
+import java.util.List;
 import java.util.LinkedHashSet;
 import java.util.Set;
 import org.springframework.boot.ApplicationArguments;
@@ -16,6 +17,13 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Component
 public class IdentityBootstrapService implements ApplicationRunner {
+
+    private static final List<SeedUser> REGRESSION_USERS = List.of(
+            new SeedUser("admin01", "Admin@123", "Regression Admin", "admin01@restaurant.local", Set.of(RoleCode.ADMIN)),
+            new SeedUser("manager01", "Manager@123", "Regression Manager", "manager01@restaurant.local", Set.of(RoleCode.MANAGER)),
+            new SeedUser("waiter01", "Waiter@123", "Regression Waiter", "waiter01@restaurant.local", Set.of(RoleCode.WAITER)),
+            new SeedUser("cashier01", "Cashier@123", "Regression Cashier", "cashier01@restaurant.local", Set.of(RoleCode.CASHIER))
+    );
 
     private final RoleRepository roleRepository;
     private final UserAccountRepository userAccountRepository;
@@ -49,6 +57,12 @@ public class IdentityBootstrapService implements ApplicationRunner {
         ensureAdmin();
     }
 
+    @Transactional
+    public void ensureRegressionUsers() {
+        ensureRoles();
+        REGRESSION_USERS.forEach(this::ensureUser);
+    }
+
     private void ensureRoles() {
         for (RoleCode code : RoleCode.values()) {
             roleRepository.findByCode(code).orElseGet(() -> {
@@ -62,17 +76,37 @@ public class IdentityBootstrapService implements ApplicationRunner {
     }
 
     private void ensureAdmin() {
-        if (userAccountRepository.existsByUsernameIgnoreCase(seedAdminProperties.getUsername())) {
+        ensureUser(new SeedUser(
+                seedAdminProperties.getUsername(),
+                seedAdminProperties.getPassword(),
+                seedAdminProperties.getFullName(),
+                seedAdminProperties.getEmail(),
+                Set.of(RoleCode.ADMIN, RoleCode.MANAGER)
+        ));
+    }
+
+    private void ensureUser(SeedUser seedUser) {
+        if (userAccountRepository.existsByUsernameIgnoreCase(seedUser.username())) {
             return;
         }
-        UserAccount admin = new UserAccount();
-        admin.setUsername(seedAdminProperties.getUsername());
-        admin.setPasswordHash(passwordEncoder.encode(seedAdminProperties.getPassword()));
-        admin.setFullName(seedAdminProperties.getFullName());
-        admin.setEmail(seedAdminProperties.getEmail());
-        admin.setActive(true);
-        admin.setRoles(new LinkedHashSet<>(roleRepository.findAllByCodeIn(Set.of(RoleCode.ADMIN, RoleCode.MANAGER))));
-        UserAccount saved = userAccountRepository.save(admin);
-        auditLogService.recordSystem("BOOTSTRAP_ADMIN_CREATED", "USER", saved.getId().toString(), saved.getUsername());
+
+        UserAccount user = new UserAccount();
+        user.setUsername(seedUser.username());
+        user.setPasswordHash(passwordEncoder.encode(seedUser.password()));
+        user.setFullName(seedUser.fullName());
+        user.setEmail(seedUser.email());
+        user.setActive(true);
+        user.setRoles(new LinkedHashSet<>(roleRepository.findAllByCodeIn(seedUser.roles())));
+
+        UserAccount saved = userAccountRepository.save(user);
+        auditLogService.recordSystem(
+                "BOOTSTRAP_USER_CREATED",
+                "USER",
+                saved.getId().toString(),
+                saved.getUsername()
+        );
+    }
+
+    private record SeedUser(String username, String password, String fullName, String email, Set<RoleCode> roles) {
     }
 }
