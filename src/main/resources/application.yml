@@ -1,0 +1,67 @@
+spring:
+  application:
+    name: restaurant-management-system
+  profiles:
+    active: local
+  threads:
+    virtual:
+      enabled: true
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 12MB
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        format_sql: true
+        jdbc:
+          time_zone: UTC
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+
+server:
+  servlet:
+    context-path: /
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+
+app:
+  cors:
+    allowed-origins:
+      - http://localhost:${APP_FRONTEND_PORT:15173}
+      - http://127.0.0.1:${APP_FRONTEND_PORT:15173}
+      - http://localhost:${APP_FRONTEND_PREVIEW_PORT:14173}
+      - http://127.0.0.1:${APP_FRONTEND_PREVIEW_PORT:14173}
+      - http://localhost:3000
+      - http://127.0.0.1:3000
+  security:
+    jwt:
+      issuer: restaurant-management-system
+      access-token-minutes: 30
+      refresh-token-days: 14
+      secret: ${APP_JWT_SECRET:change-me-change-me-change-me-change-me-change-me-change-me}
+    seed-admin:
+      username: ${APP_SEED_ADMIN_USERNAME:admin}
+      password: ${APP_SEED_ADMIN_PASSWORD:Admin@123456}
+      full-name: ${APP_SEED_ADMIN_FULL_NAME:System Administrator}
+      email: ${APP_SEED_ADMIN_EMAIL:admin@restaurant.local}
+  bootstrap:
+    demo:
+      enabled: ${APP_BOOTSTRAP_DEMO:false}
+  storage:
+    root: ${APP_STORAGE_ROOT:./data/storage}
+  qr:
+    public-base-url: ${APP_QR_PUBLIC_BASE_URL:http://127.0.0.1:${APP_FRONTEND_PORT:15173}/qr}
+
